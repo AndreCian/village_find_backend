@@ -13,7 +13,7 @@ router.get("/", async (req, res) => {
   try {
     let message = `Generate ${req.query.count} ${req.query.tone} ${req.query.type} in ecommerce ${req.query.category} field.
     Here is some extra information about generation. ${req.query.prompt}
-    Output must be Json format like following.
+    Output must be array format like following.
     ["first result", "second result", "third result", ... ]
     `;
     const chat = await openai.chat.completions.create({
@@ -26,7 +26,10 @@ router.get("/", async (req, res) => {
     if (chat.error) {
       return res.json({ status: 400 });
     }
-    return res.json({ status: 200, answers: chat.choices[0].message.content });
+    return res.json({
+      status: 200,
+      answers: JSON.parse(chat.choices[0].message.content),
+    });
   } catch (err) {
     return res.json({ status: 500, err });
   }
