@@ -23,11 +23,10 @@ router.get("/", async (req, res) => {
         { role: "user", content: message },
       ],
     });
-    return res.json({ status: 400, chat });
-    // if (chat.error) {
-    //   return res.json({ status: 400 });
-    // }
-    // return res.json({ status: 200, answers: chat.choices[0] });
+    if (chat.error) {
+      return res.json({ status: 400 });
+    }
+    return res.json({ status: 200, answers: chat.choices[0].message.content });
   } catch (err) {
     return res.json({ status: 500, err });
   }
