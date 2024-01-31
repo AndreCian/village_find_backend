@@ -38,4 +38,4 @@ const vendorSchema = new Schema({
   },
 });
 
-export default model("Vendor", vendorSchema);
+export default model("vendor", vendorSchema);

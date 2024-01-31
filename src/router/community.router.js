@@ -11,7 +11,7 @@ import { HASH_SALT_ROUND, SECRET_KEY } from "../config";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const { code } = req.query;
+  const { code, slug } = req.query;
   if (code) {
     const community = await communityModel
       .findOne({ code })
@@ -23,22 +23,71 @@ router.get("/", async (req, res) => {
     }
   }
 
+  if (slug) {
+    const community = await communityModel.aggregate([
+      { $match: { slug } },
+      {
+        $project: {
+          name: 1,
+          shortDesc: 1,
+          announcement: 1,
+          images: 1,
+          events: 1,
+        },
+      },
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "_id",
+          foreignField: "community",
+          as: "vendors",
+        },
+      },
+    ]);
+    if (community.length === 0) {
+      return res.json({ status: 404 });
+    } else {
+      return res.json({ status: 200, community: community[0] });
+    }
+  }
+
   try {
     res.send(
-      await communityModel.find(
-        (() => {
-          let obj = {};
-          if (req.query.name) obj.name = new RegExp(req.query.name, "g");
-          if (req.query.status) obj.status = req.query.status;
-          obj.signup_at = {};
-          if (req.query.from) obj.signup_at.$gte = req.query.from;
-          if (req.query.to) obj.signup_at.$lte = req.query.to;
+      await communityModel.aggregate([
+        {
+          $match: (() => {
+            let obj = {};
+            if (req.query.name) obj.name = new RegExp(req.query.name, "g");
+            if (req.query.status) obj.status = req.query.status;
+            obj.signup_at = {};
+            if (req.query.from) obj.signup_at.$gte = req.query.from;
+            if (req.query.to) obj.signup_at.$lte = req.query.to;
 
-          if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
+            if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
 
-          return obj;
-        })()
-      )
+            return obj;
+          })(),
+        },
+        {
+          $project: { name: 1, shortDesc: 1, images: 1 },
+        },
+        {
+          $lookup: {
+            from: "vendors",
+            localField: "_id",
+            foreignField: "community",
+            as: "vendors",
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            shortDesc: 1,
+            images: 1,
+            "vendors._id": 1,
+          },
+        },
+      ])
     );
   } catch (err) {
     res.send(err);
@@ -46,7 +95,32 @@ router.get("/", async (req, res) => {
 });
 router.get("/event", communityMiddleware, async (req, res) => {
   const community = req.community;
-  res.send(community.events ?? []);
+  const events = await communityModel.aggregate([
+    { $match: { _id: community._id } },
+    { $project: { events: 1 } },
+    { $unwind: { path: "$events" } },
+    {
+      $lookup: {
+        from: "customerevents",
+        localField: "events._id",
+        foreignField: "event",
+        as: "customers",
+      },
+    },
+    {
+      $replaceRoot: {
+        newRoot: {
+          $mergeObjects: [
+            "$events",
+            {
+              attendees: "$customers",
+            },
+          ],
+        },
+      },
+    },
+  ]);
+  return res.send(events);
 });
 router.get("/event/:id", communityMiddleware, async (req, res) => {
   const { id } = req.params;
@@ -150,9 +224,8 @@ router.put(
 router.put("/event", communityMiddleware, async (req, res) => {
   const community = req.community;
   community.events = community.events ?? [];
-  community.events.push({ ...req.body, status: "Inactive" });
+  community.events.push({ status: "Active", ...req.body });
   const resJson = await community.save();
-  console.log(resJson);
   return res.json({ status: 200 });
 });
 router.put("/event/:id", communityMiddleware, async (req, res) => {

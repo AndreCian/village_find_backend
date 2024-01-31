@@ -46,22 +46,9 @@ const schema = new Schema({
         endTime: String,
       },
       detail: String,
-      isActive: Boolean,
+      status: String,
       link: String,
       questions: [String],
-      status: String,
-      attendees: [
-        {
-          name: String,
-          date: Date,
-          height: {
-            min: Number,
-            max: Number,
-          },
-          weight: Number,
-          isAttend: Boolean,
-        },
-      ],
     },
   ],
   images: {

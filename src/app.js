@@ -17,6 +17,7 @@ import homeRouter from "./router/home.router";
 import featuredRouter from "./router/featured.router";
 import imagryRouter from "./router/imagry.router";
 import communityRouter from "./router/community.router";
+import customerEventRouter from "./router/customerevent.router";
 import vendorRouter from "./router/vendor.router";
 import openaiRouter from "./router/openai";
 
@@ -29,10 +30,11 @@ mongoose.connect(
 
 app.use(express.json({ limit: "200mb" }));
 app.use(cors());
-app.use("/homepage", homepageRouter);
-app.use("/coupon", couponRouter);
-app.use("/product", productRouter);
 
+app.use("/user/customer", customerRouter);
+app.use("/user/vendor", vendorRouter);
+
+app.use("/homepage", homepageRouter);
 app.use("/settings/marketplace/home", homeRouter);
 app.use("/settings/marketplace/featured-products", featuredRouter);
 app.use("/settings/marketplace/imagry", imagryRouter);
@@ -41,9 +43,12 @@ app.use("/settings/general/tag", producttagRouter);
 app.use("/settings/general/metric", metricRouter);
 app.use("/settings/general/category", categoryRouter);
 app.use("/settings/general/support", supportRouter);
+
+app.use("/coupons", couponRouter);
+app.use("/products", productRouter);
+app.use("/communities/meetup", customerEventRouter);
 app.use("/communities", communityRouter);
-app.use("/user/customer", customerRouter);
-app.use("/user/vendor", vendorRouter);
+
 app.use("/openai", openaiRouter);
 
 app.use("/uploads", express.static("uploads"));
