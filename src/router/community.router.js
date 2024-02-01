@@ -69,7 +69,7 @@ router.get("/", async (req, res) => {
           })(),
         },
         {
-          $project: { name: 1, shortDesc: 1, images: 1 },
+          $project: { name: 1, slug: 1, shortDesc: 1, images: 1 },
         },
         {
           $lookup: {
@@ -82,6 +82,7 @@ router.get("/", async (req, res) => {
         {
           $project: {
             name: 1,
+            slug: 1,
             shortDesc: 1,
             images: 1,
             "vendors._id": 1,
