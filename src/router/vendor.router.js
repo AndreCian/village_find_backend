@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { SECRET_KEY, HASH_SALT_ROUND } from "../config";
 
 import vendorModel from "../model/vendor.model";
+import vendorMiddleware from "../middleware/vendor.middleware";
 
 const router = Router();
 
@@ -40,6 +41,16 @@ router.get("/", async (req, res) => {
     );
   } catch (err) {
     res.send(err);
+  }
+});
+
+router.get("/profile/:category", vendorMiddleware, async (req, res) => {
+  const vendor = req.vendor;
+  const { category } = req.params;
+  if (category === "business") {
+    return res.send(vendor.business);
+  } else if (category === "social-urls") {
+    return res.send(vendor.socialUrls);
   }
 });
 
@@ -119,6 +130,23 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.json({ status: 500 });
+  }
+});
+
+router.put("/profile/:id", vendorMiddleware, async (req, res) => {
+  const id = req.params.id;
+  const vendor = req.vendor;
+  console.log(vendor);
+  if (id === "business") {
+    vendor.business = req.body;
+    vendor
+      .save()
+      .then((response) => {
+        return res.json({ status: 200, business: response.business });
+      })
+      .catch((err) => {
+        return res.json({ status: 500 });
+      });
   }
 });
 

@@ -30,6 +30,22 @@ const vendorSchema = new Schema({
     phone: String,
     password: String,
   },
+  business: {
+    name: String,
+    owner: String,
+    email: String,
+    phone: String,
+    address: String,
+    zipcode: String,
+  },
+  socialUrls: {
+    facebook: String,
+    twitter: String,
+    instagram: String,
+    pinterest: String,
+    youtube: String,
+    linkedin: String,
+  },
   signupAt: {
     type: Date,
   },

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
-import vendorModel from "../model/community.model";
+import vendorModel from "../model/vendor.model";
+
 import { SECRET_KEY } from "../config";
 
 export default async (req, res, next) => {
