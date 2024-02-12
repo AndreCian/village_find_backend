@@ -44,9 +44,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/profile/:category", vendorMiddleware, async (req, res) => {
+router.get("/profile/:category?", vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
   const { category } = req.params;
+  if (!category) {
+    return res.send(vendor);
+  }
   if (category === "business") {
     return res.send(vendor.business);
   } else if (category === "social-urls") {
@@ -136,13 +139,33 @@ router.post("/login", async (req, res) => {
 router.put("/profile/:id", vendorMiddleware, async (req, res) => {
   const id = req.params.id;
   const vendor = req.vendor;
-  console.log(vendor);
   if (id === "business") {
     vendor.business = req.body;
     vendor
       .save()
       .then((response) => {
         return res.json({ status: 200, business: response.business });
+      })
+      .catch((err) => {
+        return res.json({ status: 500 });
+      });
+  } else if (id === "social-urls") {
+    vendor.socialUrls = req.body;
+    vendor
+      .save()
+      .then((response) => {
+        return res.json({ status: 200, socialUrls: response.socialUrls });
+      })
+      .catch((err) => {
+        return res.json({ status: 500 });
+      });
+  } else if (id === "update-password") {
+    if (!vendor.owner) vendor.owner = {};
+    vendor.owner.password = hashSync(req.body.password, HASH_SALT_ROUND);
+    vendor
+      .save()
+      .then(() => {
+        return res.json({ status: 200 });
       })
       .catch((err) => {
         return res.json({ status: 500 });
