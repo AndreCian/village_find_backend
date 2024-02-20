@@ -5,7 +5,9 @@
   "main": "src/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --watch src --exec babel-node src/app.js"
+    "dev": "nodemon --watch src --exec babel-node src/app.js",
+    "build": "babel src -d dist",
+    "start": "node dist/app.js"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +26,7 @@
     "path": "^0.12.7"
   },
   "devDependencies": {
+    "@babel/cli": "^7.23.9",
     "@babel/core": "^7.23.3",
     "@babel/node": "^7.22.19",
     "@babel/preset-env": "^7.23.3"
