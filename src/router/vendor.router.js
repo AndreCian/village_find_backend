@@ -2,10 +2,11 @@ import { Router } from "express";
 import { hashSync, compareSync } from "bcrypt";
 import jwt from "jsonwebtoken";
 
-import { SECRET_KEY, HASH_SALT_ROUND } from "../config";
-
 import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
+import { connectOnboard } from "../utils/stripe";
+
+import { SECRET_KEY, HASH_SALT_ROUND } from "../config";
 
 const router = Router();
 
@@ -54,6 +55,15 @@ router.get("/profile/:category?", vendorMiddleware, async (req, res) => {
     return res.send(vendor.business);
   } else if (category === "social-urls") {
     return res.send(vendor.socialUrls);
+  }
+});
+
+router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
+  try {
+    const account = await connectOnboard();
+    return res.json({ status: 200, url: account.url });
+  } catch (err) {
+    return res.json({ status: 500 });
   }
 });
 
