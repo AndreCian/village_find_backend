@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/", vendorMiddleware, async (req, res) => {
   const { id, community } = req.query;
-  if (id) res.send(await productModel.find({ _id: id }).select("name"));
+  if (id) res.send(await productModel.findOne({ _id: id }).select("name"));
   else if (community) {
     const products = await productModel.aggregate([
       {
