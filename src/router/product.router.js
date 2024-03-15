@@ -9,8 +9,12 @@ const router = Router();
 router.get("/", vendorMiddleware, async (req, res) => {
   const { id, community } = req.query;
   if (id) {
-    const product = await productModel.findOne({ _id: id }).select("name");
-    res.json({ status: 200, product });
+    try {
+      const product = await productModel.findOne({ _id: id }).select("name");
+      res.json({ status: 200, product });
+    } catch (err) {
+      res.json({ status: 404 });
+    }
   } else if (community) {
     const products = await productModel.aggregate([
       {
