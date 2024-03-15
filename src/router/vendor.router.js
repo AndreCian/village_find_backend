@@ -63,7 +63,7 @@ router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
     const account = await connectOnboard();
     return res.json({ status: 200, url: account.url });
   } catch (err) {
-    return res.json({ status: 500 });
+    return res.json({ status: 500, message: err });
   }
 });
 

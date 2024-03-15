@@ -21,6 +21,8 @@ import customerEventRouter from "./router/customerevent.router";
 import vendorRouter from "./router/vendor.router";
 import openaiRouter from "./router/openai";
 
+import { webhookHandler } from "./utils/stripe";
+
 const PORT = 8080;
 const app = express();
 
@@ -50,6 +52,7 @@ app.use("/communities/meetup", customerEventRouter);
 app.use("/communities", communityRouter);
 
 app.use("/openai", openaiRouter);
+app.post("/stripe/webhook/connect", webhookHandler);
 
 app.use("/uploads", express.static("uploads"));
 
