@@ -35,8 +35,35 @@ const productSchema = new Schema({
   status: {
     type: String,
   },
-  inventory: {
-    type: Number,
+  styles: [
+    {
+      name: String,
+      discount: Number,
+      status: String,
+      attributes: [
+        {
+          name: String,
+          values: [String],
+        },
+      ],
+      inventories: [
+        {
+          inventory: Number,
+          price: Number,
+          status: String,
+        },
+      ],
+    },
+  ],
+  specifications: [
+    {
+      name: String,
+      value: String,
+    },
+  ],
+  customization: {
+    customText: String,
+    fee: Number,
   },
 });
 export default model("product", productSchema);
