@@ -48,6 +48,8 @@ const productSchema = new Schema({
       ],
       inventories: [
         {
+          image: String,
+          attrs: Object,
           inventory: Number,
           price: Number,
           status: String,

@@ -3,48 +3,21 @@ import * as mongoose from "mongoose";
 
 import productModel from "../model/product.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
+import customerMiddleware from "../middleware/customer.middleware";
 import upload from "../multer";
 
 const router = Router();
 const ObjectId = mongoose.Types.ObjectId;
 
-// router.get("/", vendorMiddleware, async (req, res) => {
-//   const { id, community } = req.query;
-//   if (id) {
-//     try {
-//       const product = await productModel.findOne({ _id: id }).select("name");
-//       res.json({ status: 200, product });
-//     } catch (err) {
-//       res.json({ status: 404 });
-//     }
-//   } else if (community) {
-//     const products = await productModel.aggregate([
-//       {
-//         $lookup: {
-//           from: "vendors",
-//           localField: "vendor",
-//           foreignField: "_id",
-//           as: "vendor",
-//         },
-//       },
-//       {
-//         $match: {
-//           "vendor.community": community,
-//         },
-//       },
-//     ]);
-//     return res.send(products);
-//   } else {
-//     res.send(await productModel.find({ vendor: req.vendor._id }));
-//   }
-// });
-
-// router.get('/vendor', )
-
 router.get("/public", async (req, res) => {
   const { community } = req.query;
-  console.log(community);
   const products = await productModel.aggregate([
+    {
+      $project: {
+        name: 1,
+        vendor: 1,
+      },
+    },
     {
       $lookup: {
         from: "vendors",
@@ -59,31 +32,37 @@ router.get("/public", async (req, res) => {
       },
     },
     {
-      $project: {
-        name: 1,
-        vendor: 1,
-      },
-    },
-    {
       $unwind: {
         path: "$vendor",
       },
     },
     {
-      $replaceWith: {
-        $mergeObjects: ["$$ROOT", "$vendor"],
-      },
-    },
-    {
-      $project: {
-        name: 1,
-        shopName: 1,
+      $replaceRoot: {
+        newRoot: {
+          $mergeObjects: [
+            {
+              _id: "$_id",
+              name: "$name",
+              shopName: "$vendor.shopName",
+            },
+          ],
+        },
       },
     },
   ]);
-  console.log(products);
 
   return res.send(products || []);
+});
+
+router.get("/customer/:productId", customerMiddleware, async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const product = await productModel.findById(productId);
+    return res.json({ status: 200, product });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 404 });
+  }
 });
 
 router.get("/vendor", vendorMiddleware, async (req, res) => {
@@ -107,6 +86,13 @@ router.get("/:id/:category", vendorMiddleware, async (req, res) => {
 
   try {
     if (category === "style") {
+      const { styleId } = req.query;
+      if (styleId) {
+        const style = (product.styles || []).find(
+          (item) => item._id.toString() === styleId
+        );
+        return res.json({ status: 200, style });
+      }
       return res.json({ status: 200, styles: product.styles || [] });
     } else if (category === "specification") {
       return res.json({
@@ -131,13 +117,60 @@ router.post(
   upload.single("nutrition"),
   async (req, res) => {
     const vendor = req.vendor;
-    res.send(
-      await productModel.create({
+    try {
+      const product = await productModel.create({
         ...req.body,
         vendor: vendor._id,
         //nutrition: req.file.path
-      })
-    );
+      });
+      return res.json({ status: 200, product });
+    } catch (err) {
+      return res.json({ status: 500 });
+    }
+  }
+);
+
+router.post(
+  "/:productId/style/image",
+  vendorMiddleware,
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const { styleId } = req.query;
+      const product = await productModel.findById(productId);
+      const style = (product.styles || []).find(
+        (item) => item._id.toString() === styleId
+      );
+      if (!style) {
+        return res.json({ status: 404 });
+      }
+
+      const images = req.files || [];
+      const ids = JSON.parse(req.body.ids) || [];
+      const inventories = style.inventories || [];
+      // ids.forEach(async (id, index) => {
+      //   const inventory = await inventories.find(
+      //     (item) => item._id.toString() === id
+      //   );
+      //   if (!inventory) {
+      //     return res.json({ status: 404 });
+      //   }
+      //   inventory.
+      // });
+      style.inventories = inventories.map((inventory, index) => {
+        const invenID = ids.findIndex(
+          (item) => item === inventory._id.toString()
+        );
+        if (invenID !== -1) {
+          return { ...inventory, image: images[invenID].path || "" };
+        }
+        return inventory;
+      });
+      console.log(style.inventories);
+      await product.save();
+      return res.json({ status: 200 });
+    } catch (err) {}
   }
 );
 
@@ -146,9 +179,21 @@ router.post("/:id/:category", vendorMiddleware, async (req, res) => {
 
   try {
     const product = await productModel.findById(id);
-    if (category === "style") {
+    if (category === "attribute") {
       const style = { ...req.body, status: "Inactive" };
       product.styles = [...(product.styles || []), style];
+    } else if (category === "inventory") {
+      const { styleId } = req.query;
+      const inventories = req.body;
+      product.styles = (product.styles || []).map((style) =>
+        style._id.toString() === styleId ? { ...style, inventories } : style
+      );
+      const savedProduct = await product.save();
+      const style = savedProduct.styles.find(
+        (item) => item._id.toString() === styleId
+      );
+      const ids = (style.inventories || []).map((item) => item._id.toString());
+      return res.json({ status: 200, ids });
     } else if (category === "specification") {
       const spec = req.body;
       product.specifications = [...(product.specifications || []), spec];

@@ -12,6 +12,7 @@ import categoryRouter from "./router/category.router";
 import supportRouter from "./router/support.router";
 import couponRouter from "./router/coupon.router";
 import productRouter from "./router/product.router";
+import cartRouter from "./router/cart.router";
 
 import homeRouter from "./router/home.router";
 import featuredRouter from "./router/featured.router";
@@ -48,6 +49,7 @@ app.use("/settings/general/support", supportRouter);
 
 app.use("/coupons", couponRouter);
 app.use("/products", productRouter);
+app.use("/cart", cartRouter);
 app.use("/communities/meetup", customerEventRouter);
 app.use("/communities", communityRouter);
 
