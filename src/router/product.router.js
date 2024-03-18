@@ -182,6 +182,15 @@ router.post("/:id/:category", vendorMiddleware, async (req, res) => {
     if (category === "attribute") {
       const style = { ...req.body, status: "Inactive" };
       product.styles = [...(product.styles || []), style];
+
+      const result = await product.save();
+      const resultStyle = result.styles.find(
+        (item) => item.name === style.name
+      );
+      if (resultStyle) {
+        return res.json({ status: 200, attrId: resultStyle._id });
+      }
+      return res.json({ status: 500 });
     } else if (category === "inventory") {
       const { styleId } = req.query;
       const inventories = req.body;
