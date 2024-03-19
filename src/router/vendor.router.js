@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
-import { connectOnboard } from "../utils/stripe";
+import { connectStripe } from "../utils/stripe";
 
 import { SECRET_KEY, HASH_SALT_ROUND } from "../config";
 
@@ -60,7 +60,7 @@ router.get("/profile/:category?", vendorMiddleware, async (req, res) => {
 
 router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
   try {
-    const account = await connectOnboard();
+    const account = await connectStripe();
     return res.json({ status: 200, url: account.url });
   } catch (err) {
     return res.json({ status: 500, message: err });

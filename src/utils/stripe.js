@@ -1,9 +1,12 @@
-import { STRIPE_SECRET_KEY, FRONTEND_URL } from "../config";
 import stripe from "stripe";
+import express from "express";
 
+import { STRIPE_SECRET_KEY, FRONTEND_URL } from "../config";
+
+const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
 
-export const connectOnboard = async () => {
+export const connectStripe = async () => {
   const account = await stripeClient.accounts.create({
     type: "express",
   });
@@ -17,7 +20,7 @@ export const connectOnboard = async () => {
   return accountLink;
 };
 
-export const webhookHandler = (request, response) => {
+router.post("/connect", async (request, response) => {
   const sig = request.headers["stripe-signature"];
 
   let event;
@@ -61,5 +64,7 @@ export const webhookHandler = (request, response) => {
       console.log(`Unhandled event type ${event.type}`);
   }
 
-  response.json({ received: true });
-};
+  return response.json({ received: true });
+});
+
+export default router;

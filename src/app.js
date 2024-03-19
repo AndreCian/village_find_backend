@@ -22,7 +22,7 @@ import customerEventRouter from "./router/customerevent.router";
 import vendorRouter from "./router/vendor.router";
 import openaiRouter from "./router/openai";
 
-import { webhookHandler } from "./utils/stripe";
+import stripeRouter from "./utils/stripe";
 
 const PORT = 8080;
 const app = express();
@@ -54,7 +54,7 @@ app.use("/api/communities/meetup", customerEventRouter);
 app.use("/api/communities", communityRouter);
 
 app.use("/api/openai", openaiRouter);
-app.post("/api/stripe/webhook/connect", webhookHandler);
+app.post("api/stripe/webhook", stripeRouter);
 
 app.use("/api/uploads", express.static("uploads"));
 
