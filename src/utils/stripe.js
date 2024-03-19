@@ -1,7 +1,11 @@
 import stripe from "stripe";
 import express from "express";
 
-import { STRIPE_SECRET_KEY, FRONTEND_URL } from "../config";
+import {
+  STRIPE_SECRET_KEY,
+  WEBHOOK_ENDPOINT_KEY,
+  FRONTEND_URL,
+} from "../config";
 
 const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
@@ -24,6 +28,7 @@ router.post("/connect", async (request, response) => {
   const sig = request.headers["stripe-signature"];
 
   let event;
+  const endpointSecret = WEBHOOK_ENDPOINT_KEY;
 
   // Verify webhook signature and extract the event.
   // See https://stripe.com/docs/webhooks#verify-events for more information.
