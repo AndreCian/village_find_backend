@@ -34,29 +34,29 @@ mongoose.connect(
 app.use(express.json({ limit: "200mb" }));
 app.use(cors());
 
-app.use("/user/customer", customerRouter);
-app.use("/user/vendor", vendorRouter);
+app.use("/api/user/customer", customerRouter);
+app.use("/api/user/vendor", vendorRouter);
 
-app.use("/homepage", homepageRouter);
-app.use("/settings/marketplace/home", homeRouter);
-app.use("/settings/marketplace/featured-products", featuredRouter);
-app.use("/settings/marketplace/imagry", imagryRouter);
-app.use("/settings/marketplace/footer", footerRouter);
-app.use("/settings/general/tag", producttagRouter);
-app.use("/settings/general/metric", metricRouter);
-app.use("/settings/general/category", categoryRouter);
-app.use("/settings/general/support", supportRouter);
+app.use("/api/homepage", homepageRouter);
+app.use("/api/settings/marketplace/home", homeRouter);
+app.use("/api/settings/marketplace/featured-products", featuredRouter);
+app.use("/api/settings/marketplace/imagry", imagryRouter);
+app.use("/api/settings/marketplace/footer", footerRouter);
+app.use("/api/settings/general/tag", producttagRouter);
+app.use("/api/settings/general/metric", metricRouter);
+app.use("/api/settings/general/category", categoryRouter);
+app.use("/api/settings/general/support", supportRouter);
 
-app.use("/coupons", couponRouter);
-app.use("/products", productRouter);
-app.use("/cart", cartRouter);
-app.use("/communities/meetup", customerEventRouter);
-app.use("/communities", communityRouter);
+app.use("/api/coupons", couponRouter);
+app.use("/api/products", productRouter);
+app.use("/api/cart", cartRouter);
+app.use("/api/communities/meetup", customerEventRouter);
+app.use("/api/communities", communityRouter);
 
-app.use("/openai", openaiRouter);
-app.post("/stripe/webhook/connect", webhookHandler);
+app.use("/api/openai", openaiRouter);
+app.post("/api/stripe/webhook/connect", webhookHandler);
 
-app.use("/uploads", express.static("uploads"));
+app.use("/api/uploads", express.static("uploads"));
 
 app.use((err, req, res, next) => {
   if (err) {
