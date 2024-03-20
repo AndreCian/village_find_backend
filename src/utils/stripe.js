@@ -42,7 +42,7 @@ router.post(
     console.log("Stripe Connect Webhook");
 
     let event;
-    const endpointSecret = STRIPE_CONNECT_WEBHOOK_ENDPOINT_KEY;
+    const endpointSecret = STRIPE_CONNECT_WEBHOOK_SIGN;
 
     // Verify webhook signature and extract the event.
     // See https://stripe.com/docs/webhooks#verify-events for more information.
