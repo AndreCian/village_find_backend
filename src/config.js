@@ -3,5 +3,6 @@ export const SECRET_KEY = process.env.SECRET_KEY || "abc123";
 export const OPENAI_KEY = process.env.OPENAI_KEY || "";
 export const ORGANIZATION_ID = process.env.ORGANIZATION_ID || "";
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
-export const WEBHOOK_ENDPOINT_KEY = process.env.WEBHOOK_ENDNPOINT_KEY || "";
+export const STRIPE_CONNECT_WEBHOOK_ENDPOINT_KEY =
+  process.env.CONNECT_WEBHOOK_ENDNPOINT_KEY || "";
 export const FRONTEND_URL = process.env.FRONTEND_URL || "";
