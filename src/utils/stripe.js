@@ -35,7 +35,7 @@ export const connectStripe = async (accId) => {
 
 router.post(
   "/connect",
-  express.json({ type: "application/json" }),
+  express.raw({ type: "application/json" }),
   async (request, response) => {
     const sig = request.headers["stripe-signature"];
 
