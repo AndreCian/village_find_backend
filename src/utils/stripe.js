@@ -10,22 +10,33 @@ import {
 const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
 
-export const connectStripe = async () => {
-  const account = await stripeClient.accounts.create({
-    type: "express",
-  });
+export const connectStripe = async (accId) => {
+  console.log('Stripe connecting part...', accId)
+  let accountId = accId;
+  if (!accountId) {
+    const account = await stripeClient.accounts.create({
+      type: "express",
+    });
+    accountId = account.id;
+  }
+  console.log('Account Id...', accountId)
   const accountLink = await stripeClient.accountLinks.create({
-    account: account.id,
+    account: accountId,
     type: "account_onboarding",
     refresh_url: `${FRONTEND_URL}`,
-    return_url: `${FRONTEND_URL}/vendor/profile/bank-detail`,
+    return_url: `${FRONTEND_URL}/vendor/profile/bank-detail?acc_id=${accountId}`,
   });
 
-  return accountLink;
+  return {
+    url: accountLink.url,
+    accountId
+  };
 };
 
-router.post("/connect", async (request, response) => {
+router.post("/connect", express.json({type: 'application/json'}), async (request, response) => {
   const sig = request.headers["stripe-signature"];
+
+  console.log('Stripe Connect Webhook');
 
   let event;
   const endpointSecret = WEBHOOK_ENDPOINT_KEY;

@@ -54,7 +54,7 @@ app.use("/api/communities/meetup", customerEventRouter);
 app.use("/api/communities", communityRouter);
 
 app.use("/api/openai", openaiRouter);
-app.post("api/stripe/webhook", stripeRouter);
+app.use("/api/stripe/webhook", stripeRouter);
 
 app.use("/api/uploads", express.static("uploads"));
 
