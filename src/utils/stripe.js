@@ -3,7 +3,7 @@ import express from "express";
 
 import {
   STRIPE_SECRET_KEY,
-  STRIPE_CONNECT_WEBHOOK_ENDPOINT_KEY,
+  STRIPE_CONNECT_WEBHOOK_SIGN,
   FRONTEND_URL,
 } from "../config";
 
