@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
-import stripeAccModel from '../model/stripeAcc.model'
+import stripeAccModel from "../model/stripeAcc.model";
 import { connectStripe } from "../utils/stripe";
 
 import { SECRET_KEY, HASH_SALT_ROUND } from "../config";
@@ -62,19 +62,22 @@ router.get("/profile/:category?", vendorMiddleware, async (req, res) => {
 router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
   try {
-    const stripeAccount = await stripeAccModel.findOne({vendorId: vendor._id})
-    const account = await connectStripe(stripeAccount ? stripeAccount.accId : null);
+    const stripeAccount = await stripeAccModel.findOne({
+      vendorId: vendor._id,
+    });
+    const account = await connectStripe(
+      stripeAccount ? stripeAccount.accId : null
+    );
     if (!stripeAccount) {
-      console.log(account)
-      const conAccount = await stripeAccModel.create({
+      await stripeAccModel.create({
         vendorId: vendor._id,
         accId: account.id,
-        status: 'Created'
+        status: "Active",
       });
     }
     return res.json({ status: 200, url: account.url });
   } catch (err) {
-    console.log(err)
+    console.log(err);
     return res.json({ status: 500, message: err });
   }
 });

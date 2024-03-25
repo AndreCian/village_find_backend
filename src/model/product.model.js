@@ -1,9 +1,10 @@
-import { Schema, model } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
+const ObjectId = mongoose.Types.ObjectId;
 
 const productSchema = new Schema({
   vendor: {
-    type: Schema.Types.ObjectId,
-    ref: "Vendor",
+    type: ObjectId,
+    ref: "vendor",
   },
   name: {
     type: String,
@@ -11,9 +12,7 @@ const productSchema = new Schema({
   category: {
     type: String,
   },
-  marketType: {
-    type: String,
-  },
+  deliveryTypes: [String],
   shortDesc: {
     type: String,
   },
@@ -35,28 +34,6 @@ const productSchema = new Schema({
   status: {
     type: String,
   },
-  styles: [
-    {
-      name: String,
-      discount: Number,
-      status: String,
-      attributes: [
-        {
-          name: String,
-          values: [String],
-        },
-      ],
-      inventories: [
-        {
-          image: String,
-          attrs: Object,
-          inventory: Number,
-          price: Number,
-          status: String,
-        },
-      ],
-    },
-  ],
   specifications: [
     {
       name: String,
@@ -66,6 +43,13 @@ const productSchema = new Schema({
   customization: {
     customText: String,
     fee: Number,
+  },
+  subscription: {
+    frequency: String,
+    discount: Number,
+    duration: Number,
+    startDate: String,
+    endDate: String,
   },
 });
 export default model("product", productSchema);

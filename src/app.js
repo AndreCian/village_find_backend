@@ -12,8 +12,8 @@ import categoryRouter from "./router/category.router";
 import supportRouter from "./router/support.router";
 import couponRouter from "./router/coupon.router";
 import productRouter from "./router/product.router";
-// import styleRouter from "./router/style.router";
-// import inventoryRouter from "./router/inventory.router";
+import styleRouter from "./router/style.router";
+import inventoryRouter from "./router/inventory.router";
 import cartRouter from "./router/cart.router";
 
 import homeRouter from "./router/home.router";
@@ -52,8 +52,8 @@ app.use("/api/settings/general/support", supportRouter);
 
 app.use("/api/coupons", couponRouter);
 app.use("/api/products", productRouter);
-// app.use("/api/styles", styleRouter);
-// app.use("/api/inventories", inventoryRouter);
+app.use("/api/styles", styleRouter);
+app.use("/api/inventories", inventoryRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/communities/meetup", customerEventRouter);
 app.use("/api/communities", communityRouter);

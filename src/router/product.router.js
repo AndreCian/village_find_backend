@@ -2,20 +2,23 @@ import { Router } from "express";
 import * as mongoose from "mongoose";
 
 import productModel from "../model/product.model";
+
 import vendorMiddleware from "../middleware/vendor.middleware";
-import customerMiddleware from "../middleware/customer.middleware";
-import upload from "../multer";
+import uploadMiddleware from "../multer";
 
 const router = Router();
 const ObjectId = mongoose.Types.ObjectId;
 
 router.get("/public", async (req, res) => {
   const { community } = req.query;
+
   const products = await productModel.aggregate([
     {
-      $project: {
-        name: 1,
-        vendor: 1,
+      $lookup: {
+        from: "inventories",
+        localField: "_id",
+        foreignField: "productId",
+        as: "inventories",
       },
     },
     {
@@ -32,8 +35,21 @@ router.get("/public", async (req, res) => {
       },
     },
     {
-      $unwind: {
-        path: "$vendor",
+      $addFields: {
+        inventory: {
+          $first: {
+            $filter: {
+              input: "$inventories",
+              as: "inventory",
+              cond: {
+                $ne: ["$$inventory.image", null],
+              },
+            },
+          },
+        },
+        vendor: {
+          $first: "$vendor",
+        },
       },
     },
     {
@@ -41,9 +57,20 @@ router.get("/public", async (req, res) => {
         newRoot: {
           $mergeObjects: [
             {
+              _id: "",
+              category: "",
+              name: "",
+              shopName: "",
+              price: 0,
+              image: "",
+            },
+            {
               _id: "$_id",
+              category: "$category",
               name: "$name",
               shopName: "$vendor.shopName",
+              price: "$inventory.price",
+              image: "$inventory.image",
             },
           ],
         },
@@ -51,26 +78,79 @@ router.get("/public", async (req, res) => {
     },
   ]);
 
-  return res.send(products || []);
-});
-
-router.get("/customer/:productId", customerMiddleware, async (req, res) => {
-  const { productId } = req.params;
-  try {
-    const product = await productModel.findById(productId);
-    return res.json({ status: 200, product });
-  } catch (err) {
-    console.log(err);
-    return res.json({ status: 404 });
-  }
-});
-
-router.get("/vendor", vendorMiddleware, async (req, res) => {
-  const products = await productModel.find().select("name status");
   return res.send(products);
 });
 
-router.get("/:id", vendorMiddleware, async (req, res) => {
+router.get("/vendor", vendorMiddleware, async (req, res) => {
+  const products = await productModel.aggregate([
+    {
+      $project: {
+        name: 1,
+        status: 1,
+        specification: {
+          $first: {
+            $filter: {
+              input: "$specifications",
+              as: "specification",
+              cond: {
+                $eq: ["$$specification.name", "sku"],
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "inventories",
+        localField: "_id",
+        foreignField: "productId",
+        as: "inventories",
+      },
+    },
+    {
+      $addFields: {
+        inventory: {
+          $first: {
+            $filter: {
+              input: "$inventories",
+              as: "inventory",
+              cond: {
+                $ne: ["$$inventory.image", null],
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      $replaceRoot: {
+        newRoot: {
+          $mergeObjects: [
+            {
+              _id: "",
+              name: "",
+              status: "",
+              image: "",
+              sku: "",
+            },
+            {
+              _id: "$_id",
+              name: "$name",
+              status: "$status",
+              image: "$inventory.image",
+              sku: "$specification.value",
+            },
+          ],
+        },
+      },
+    },
+  ]);
+
+  return res.send(products);
+});
+
+router.get("/vendor/:id", vendorMiddleware, async (req, res) => {
   const { id } = req.params;
   try {
     const product = await productModel.findById(id);
@@ -79,6 +159,133 @@ router.get("/:id", vendorMiddleware, async (req, res) => {
     return res.json({ status: 404 });
   }
 });
+
+router.get(
+  "/customer/:id",
+  /*customerMiddleware,*/ async (req, res) => {
+    const { id } = req.params;
+    try {
+      const products = await productModel.aggregate([
+        {
+          $match: {
+            _id: new ObjectId(id),
+          },
+        },
+        {
+          $lookup: {
+            from: "vendors",
+            localField: "vendor",
+            foreignField: "_id",
+            as: "vendor",
+          },
+        },
+        {
+          $lookup: {
+            from: "communities",
+            localField: "vendor.community",
+            foreignField: "_id",
+            as: "community",
+          },
+        },
+        {
+          $lookup: {
+            from: "styles",
+            localField: "_id",
+            foreignField: "productId",
+            as: "styles",
+          },
+        },
+        {
+          $unwind: "$vendor",
+        },
+        {
+          $unwind: "$community",
+        },
+        {
+          $addFields: {
+            inventories: {
+              $reduce: {
+                input: "$styles",
+                initialValue: [],
+                in: {
+                  $concatArrays: ["$$value", "$$this.inventories"],
+                },
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "inventories",
+            localField: "inventories",
+            foreignField: "_id",
+            as: "inventories",
+          },
+        },
+        {
+          $project: {
+            name: "$name",
+            more: {
+              shortDesc: "$shortDesc",
+              longDesc: "$longDesc",
+              disclaimer: "$disclaimer",
+              specifications: "$specifications",
+            },
+            vendor: {
+              _id: 1,
+              shopName: 1,
+            },
+            community: {
+              _id: 1,
+              name: 1,
+              slug: 1,
+            },
+            styles: 1,
+            inventories: {
+              _id: 1,
+              attrs: 1,
+              image: 1,
+              price: 1,
+            },
+            customization: 1,
+            subscription: 1,
+            soldByUnit: 1,
+            deliveryTypes: 1,
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: [
+                {
+                  more: "$more",
+                  order: {
+                    name: "$name",
+                    vendor: "$vendor",
+                    community: "$community",
+                    styles: "$styles",
+                    inventories: "$inventories",
+                    customization: "$customization",
+                    subscription: "$subscription",
+                    soldByUnit: "$soldByUnit",
+                    deliveryTypes: "$deliveryTypes",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ]);
+      if (products.length === 1) {
+        return res.json({ status: 200, product: products[0] });
+      }
+      return res.json({ status: 404 });
+    } catch (err) {
+      console.log(err);
+      return res.json({ status: 500 });
+    }
+  }
+);
 
 router.get("/:id/:category", vendorMiddleware, async (req, res) => {
   const { id, category } = req.params;
@@ -104,6 +311,8 @@ router.get("/:id/:category", vendorMiddleware, async (req, res) => {
         status: 200,
         customization: product.customization || {},
       });
+    } else if (category === "subscription") {
+      return res.json({ status: product.subscription });
     }
     return res.json({ status: 200 });
   } catch (err) {
@@ -114,14 +323,15 @@ router.get("/:id/:category", vendorMiddleware, async (req, res) => {
 router.post(
   "/",
   vendorMiddleware,
-  upload.single("nutrition"),
+  uploadMiddleware.single("nutrition"),
   async (req, res) => {
     const vendor = req.vendor;
     try {
       const product = await productModel.create({
         ...req.body,
         vendor: vendor._id,
-        //nutrition: req.file.path
+        nutrition: req.file.path,
+        status: "inactive",
       });
       return res.json({ status: 200, product });
     } catch (err) {
@@ -130,85 +340,20 @@ router.post(
   }
 );
 
-router.post(
-  "/:productId/style/image",
-  vendorMiddleware,
-  upload.array("images"),
-  async (req, res) => {
-    try {
-      const { productId } = req.params;
-      const { styleId } = req.query;
-      const product = await productModel.findById(productId);
-      const style = (product.styles || []).find(
-        (item) => item._id.toString() === styleId
-      );
-      if (!style) {
-        return res.json({ status: 404 });
-      }
-
-      const images = req.files || [];
-      const ids = JSON.parse(req.body.ids) || [];
-      const inventories = style.inventories || [];
-      // ids.forEach(async (id, index) => {
-      //   const inventory = await inventories.find(
-      //     (item) => item._id.toString() === id
-      //   );
-      //   if (!inventory) {
-      //     return res.json({ status: 404 });
-      //   }
-      //   inventory.
-      // });
-      style.inventories = inventories.map((inventory, index) => {
-        const invenID = ids.findIndex(
-          (item) => item === inventory._id.toString()
-        );
-        if (invenID !== -1) {
-          return { ...inventory, image: images[invenID].path || "" };
-        }
-        return inventory;
-      });
-      console.log(style.inventories);
-      await product.save();
-      return res.json({ status: 200 });
-    } catch (err) {}
-  }
-);
-
 router.post("/:id/:category", vendorMiddleware, async (req, res) => {
   const { id, category } = req.params;
 
   try {
     const product = await productModel.findById(id);
-    if (category === "attribute") {
-      const style = { ...req.body, status: "Inactive" };
-      product.styles = [...(product.styles || []), style];
-
-      const result = await product.save();
-      const resultStyle = result.styles.find(
-        (item) => item.name === style.name
-      );
-      if (resultStyle) {
-        return res.json({ status: 200, attrId: resultStyle._id });
-      }
-      return res.json({ status: 500 });
-    } else if (category === "inventory") {
-      const { styleId } = req.query;
-      const inventories = req.body;
-      product.styles = (product.styles || []).map((style) =>
-        style._id.toString() === styleId ? { ...style, inventories } : style
-      );
-      const savedProduct = await product.save();
-      const style = savedProduct.styles.find(
-        (item) => item._id.toString() === styleId
-      );
-      const ids = (style.inventories || []).map((item) => item._id.toString());
-      return res.json({ status: 200, ids });
-    } else if (category === "specification") {
+    if (category === "specification") {
       const spec = req.body;
       product.specifications = [...(product.specifications || []), spec];
     } else if (category === "customization") {
       const custom = req.body;
       product.customization = custom;
+    } else if (category === "subscription") {
+      const subscribe = req.body;
+      product.subscription = subscribe;
     }
     await product.save();
     return res.json({ status: 200 });
@@ -217,14 +362,45 @@ router.post("/:id/:category", vendorMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:id", vendorMiddleware, async (req, res) => {
-  let data = await productModel.findById(req.params.id);
-  data = {
-    ...data,
-    ...req.body,
-  };
-  res.send(await productModel.findByIdAndUpdate(req.params.id, data));
-});
+router.put(
+  "/:id",
+  vendorMiddleware,
+  uploadMiddleware.single("nutrition"),
+  async (req, res) => {
+    const { id } = req.params;
+    const {
+      name,
+      deliveryTypes,
+      category,
+      status,
+      shortDesc,
+      longDesc,
+      disclaimer,
+      soldByUnit,
+      tax,
+    } = req.body;
+    console.log(deliveryTypes);
+
+    try {
+      const product = await productModel.findById(id);
+      if (name) product.name = name;
+      if (deliveryTypes) product.deliveryTypes = JSON.parse(deliveryTypes);
+      if (category) product.category = category;
+      if (shortDesc) product.shortDesc = shortDesc;
+      if (longDesc) product.longDesc = longDesc;
+      if (disclaimer) product.disclaimer = disclaimer;
+      if (soldByUnit) product.soldByUnit = soldByUnit;
+      if (tax) product.tax = tax;
+      if (req.file) product.nutrition = req.file.path;
+      if (!!status) product.status = status;
+      await product.save();
+      return res.json({ status: 200 });
+    } catch (err) {
+      console.error(err);
+      return res.json({ status: 500 });
+    }
+  }
+);
 
 // router.put("/:id/:category", vendorMiddleware, async (req, res) => {
 //   if (category === 'style') {

@@ -7,6 +7,8 @@ import {
   FRONTEND_URL,
 } from "../config";
 
+import stripeAccModel from "../model/stripeAcc.model";
+
 const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
 
@@ -29,7 +31,7 @@ export const connectStripe = async (accId) => {
 
   return {
     url: accountLink.url,
-    accountId,
+    id: accountId,
   };
 };
 
@@ -56,7 +58,12 @@ router.post(
     switch (event.type) {
       case "account.updated":
         const accountUpdated = event.data.object;
-        console.log(accountUpdated);
+        const stripeAccount = await stripeAccModel.findOne({
+          accId: accountUpdated.id,
+        });
+        stripeAccount.status = "Connected";
+        await stripeAccount.save();
+
         // Then define and call a function to handle the event account.updated
         break;
       case "account.application.authorized":
