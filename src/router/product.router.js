@@ -10,7 +10,7 @@ const router = Router();
 const ObjectId = mongoose.Types.ObjectId;
 
 router.get("/public", async (req, res) => {
-  const { community, vendor, type } = req.query;
+  const { community, vendor, type, search } = req.query;
 
   if (community) {
     const products = await productModel.aggregate([
@@ -172,6 +172,18 @@ router.get("/public", async (req, res) => {
         },
       },
       {
+        $match: {
+          $or: [
+            {
+              name: { $regex: search, $options: "i" },
+            },
+            {
+              "vendor.shopName": { $regex: search, $options: "i" },
+            },
+          ],
+        },
+      },
+      {
         $addFields: {
           inventory: {
             $first: {
@@ -232,6 +244,18 @@ router.get("/public", async (req, res) => {
           localField: "vendor",
           foreignField: "_id",
           as: "vendor",
+        },
+      },
+      {
+        $match: {
+          $or: [
+            {
+              name: { $regex: search, $options: "i" },
+            },
+            {
+              "vendor.shopName": { $regex: search, $options: "i" },
+            },
+          ],
         },
       },
       {
