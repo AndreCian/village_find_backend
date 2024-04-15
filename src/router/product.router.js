@@ -216,6 +216,99 @@ router.get("/public", async (req, res) => {
       },
     ]);
     return res.send(products);
+  } else {
+    const products = await productModel.aggregate([
+      {
+        $lookup: {
+          from: "inventories",
+          localField: "_id",
+          foreignField: "productId",
+          as: "inventories",
+        },
+      },
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "vendor",
+          foreignField: "_id",
+          as: "vendor",
+        },
+      },
+      {
+        $addFields: {
+          inventory: {
+            $first: {
+              $filter: {
+                input: "$inventories",
+                as: "inventory",
+                cond: {
+                  $ne: ["$$inventory.image", null],
+                },
+              },
+            },
+          },
+          vendor: {
+            $first: "$vendor",
+          },
+        },
+      },
+      {
+        $addFields: {
+          tags: {
+            $cond: {
+              if: {
+                $in: ["Local Subscriptions", "$deliveryTypes"],
+              },
+              then: ["Subscription", "Near By"],
+              else: {
+                $cond: {
+                  if: {
+                    $in: ["Near By", "$deliveryTypes"],
+                  },
+                  then: ["Near By"],
+                  else: {
+                    $cond: {
+                      if: {
+                        $ne: ["$subscription", null],
+                      },
+                      then: ["Subscription"],
+                      else: [],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              {
+                _id: "",
+                category: "",
+                name: "",
+                shopName: "",
+                price: 0,
+                image: "",
+                tags: [],
+              },
+              {
+                _id: "$_id",
+                category: "$category",
+                name: "$name",
+                shopName: "$vendor.shopName",
+                price: "$inventory.price",
+                image: "$inventory.image",
+                tags: "$tags",
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    return res.send(products);
   }
 });
 

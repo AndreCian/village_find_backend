@@ -11,48 +11,48 @@ import { HASH_SALT_ROUND, SECRET_KEY } from "../config";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const { code, slug } = req.query;
-  if (code) {
-    const community = await communityModel
-      .findOne({ code })
-      .select("name images shortDesc categories slug")
-      .populate("categories");
-    if (community) {
-      return res.json({ status: 200, community });
-    } else {
-      return res.json({ status: 404 });
-    }
-  }
-
-  if (slug) {
-    const community = await communityModel.aggregate([
-      { $match: { slug } },
-      {
-        $project: {
-          name: 1,
-          shortDesc: 1,
-          announcement: 1,
-          images: 1,
-          events: 1,
-        },
-      },
-      {
-        $lookup: {
-          from: "vendors",
-          localField: "_id",
-          foreignField: "community",
-          as: "vendors",
-        },
-      },
-    ]);
-    if (community.length === 0) {
-      return res.json({ status: 404 });
-    } else {
-      return res.json({ status: 200, community: community[0] });
-    }
-  }
-
   try {
+    const { code, slug } = req.query;
+    if (code) {
+      const community = await communityModel
+        .findOne({ code })
+        .select("name images shortDesc categories slug")
+        .populate("categories");
+      if (community) {
+        return res.json({ status: 200, community });
+      } else {
+        return res.json({ status: 404 });
+      }
+    }
+
+    if (slug) {
+      const community = await communityModel.aggregate([
+        { $match: { slug } },
+        {
+          $project: {
+            name: 1,
+            shortDesc: 1,
+            announcement: 1,
+            images: 1,
+            events: 1,
+          },
+        },
+        {
+          $lookup: {
+            from: "vendors",
+            localField: "_id",
+            foreignField: "community",
+            as: "vendors",
+          },
+        },
+      ]);
+      if (community.length === 0) {
+        return res.json({ status: 404 });
+      } else {
+        return res.json({ status: 200, community: community[0] });
+      }
+    }
+
     res.send(
       await communityModel.aggregate([
         {
