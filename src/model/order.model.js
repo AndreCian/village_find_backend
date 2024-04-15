@@ -1,25 +1,32 @@
-import mongoose from "mongoose";
-
-const Schma = mongoose.Schema;
+import { Schema, default as mongoose } from "mongoose";
 const ObjectId = mongoose.Types.ObjectId;
 
 const OrderSchema = new Schema({
   orderId: Number,
-  customer: {
+  customerID: {
     type: ObjectId,
     ref: "customer",
   },
-  vendor: {
+  vendorID: {
     type: ObjectId,
     ref: "vendor",
   },
-  shipMethod: [String],
-  shipOrder: {
+  orderInfo: {
     createdAt: Date,
-    orderClass: String,
+    isshipping: Boolean,
+    issubscription: Boolean,
+    iscsa: Boolean,
+    issubstitute: Boolean,
+    deliveryType: String,
     address: String,
-    deliveryIns: String,
-    isSubstitute: Boolean,
+    instruction: String,
+    personalization: String,
+    csa: {
+      cycle: Number,
+      duration: Number,
+      payment: String,
+      status: String,
+    },
   },
   giftInfo: {
     recipient: String,
@@ -27,12 +34,22 @@ const OrderSchema = new Schema({
     phone: String,
     message: String,
   },
-  personalization: String,
-  products: [
-    {
-      image: String,
+  product: {
+    imageUrl: String,
+    name: String,
+    price: Number,
+    quantity: Number,
+    discount: Number,
+    gift: {
+      recipient: String,
+      email: String,
+      phone: String,
+      message: String,
     },
-  ],
+    personalization: String,
+  },
+  createdAt: Date,
+  status: String,
 });
 
 export default mongoose.model("order", OrderSchema);

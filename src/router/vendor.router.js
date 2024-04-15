@@ -4,10 +4,16 @@ import jwt from "jsonwebtoken";
 
 import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
-import stripeAccModel from "../model/stripeAcc.model";
+import uploadMiddleware from "../multer";
 import { connectStripe } from "../utils/stripe";
+import { connectShippo } from "../utils/shippo";
 
-import { SECRET_KEY, HASH_SALT_ROUND } from "../config";
+import {
+  SECRET_KEY,
+  HASH_SALT_ROUND,
+  SHIPPO_CLIENT_ID,
+  SHIPPO_STATE_KEY,
+} from "../config";
 
 const router = Router();
 
@@ -18,7 +24,10 @@ router.get("/", async (req, res) => {
       await vendorModel.find({ communityId: req.query.communityId })
     );
   } else if (vendorId) {
-    const vendor = await vendorModel.findById(vendorId).populate("community");
+    const vendor = await vendorModel
+      .findById(vendorId)
+      .select("shopName store images community")
+      .populate("community");
     if (!vendor) {
       return res.json({ status: 404 });
     }
@@ -56,31 +65,91 @@ router.get("/profile/:category?", vendorMiddleware, async (req, res) => {
     return res.send(vendor.business);
   } else if (category === "social-urls") {
     return res.send(vendor.socialUrls);
+  } else if (category === "store") {
+    return res.send(vendor.store);
+  } else if (category === "images") {
+    return res.send(vendor.images || []);
+  } else if (category === "open") {
+    return res.send(vendor.isOpen);
+  }
+});
+
+router.get(
+  "/profile/bank-detail/verified",
+  vendorMiddleware,
+  async (req, res) => {
+    const vendor = req.vendor;
+    if (vendor.stripeAccountID) return res.send(true);
+    return res.send(false);
+  }
+);
+
+router.get(
+  "/profile/fulfillment/:method",
+  vendorMiddleware,
+  async (req, res) => {
+    const fulfillment = req.vendor.fulfillment;
+    const { method } = req.params;
+    if (method === "pickup") {
+      return res.send(fulfillment.pickup);
+    } else if (method === "delivery") {
+      return res.send(fulfillment.delivery);
+    } else if (method === "location") {
+      const { id } = req.query;
+      if (id) {
+        return res.send(
+          fulfillment.locations.find((item) => item._id.toString() === id)
+        );
+      }
+      return res.send(fulfillment.locations);
+    }
+  }
+);
+
+router.get("/profile/shipping/:method", vendorMiddleware, async (req, res) => {
+  const { method } = req.params;
+  const vendor = req.vendor;
+  if (method === "service") {
+    return res.send((vendor.shipping && vendor.shipping.services) || []);
+  } else if (method === "parcel") {
+    const { id } = req.query;
+    if (id) {
+      return res.send(
+        await vendor.shipping.parcels.find((item) => item._id.toString() === id)
+      );
+    }
+    return res.send(vendor.shipping.parcels || []);
   }
 });
 
 router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
   try {
-    const stripeAccount = await stripeAccModel.findOne({
-      vendorId: vendor._id,
-    });
-    const account = await connectStripe(
-      stripeAccount ? stripeAccount.accId : null
-    );
-    if (!stripeAccount) {
-      await stripeAccModel.create({
-        vendorId: vendor._id,
-        accId: account.id,
-        status: "Active",
-      });
-    }
+    const account = await connectStripe(vendor);
     return res.json({ status: 200, url: account.url });
   } catch (err) {
     console.log(err);
     return res.json({ status: 500, message: err });
   }
 });
+
+router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
+  return res.send(
+    `https://goshippo.com/oauth/authorize?response_type=code&client_id=${SHIPPO_CLIENT_ID}&scope=*&state=${SHIPPO_STATE_KEY}`
+  );
+});
+
+router.get(
+  "/profile/bank-detail/verify",
+  vendorMiddleware,
+  async (req, res) => {
+    const vendor = req.vendor;
+    const { accountID } = req.query;
+
+    if (vendor.stripeAccountID === accountID) return res.json({ status: 200 });
+    return res.json({ status: 400 });
+  }
+);
 
 //signup
 router.post("/register", async (req, res) => {
@@ -135,7 +204,10 @@ router.post("/login", async (req, res) => {
       if (!currentUser) {
         return res.json({ status: 401 });
       }
-      return res.json({ status: 200 });
+      return res.json({
+        status: 200,
+        profile: { fullName: currentUser.owner.name },
+      });
     } catch (err) {
       return res.json({ status: 401 });
     }
@@ -161,50 +233,157 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.put("/profile/:id", vendorMiddleware, async (req, res) => {
-  const id = req.params.id;
+router.put(
+  "/profile/:id",
+  vendorMiddleware,
+  uploadMiddleware.array("images"),
+  async (req, res) => {
+    const id = req.params.id;
+    const vendor = req.vendor;
+    if (id === "business") {
+      vendor.business = req.body;
+      vendor
+        .save()
+        .then((response) => {
+          return res.json({ status: 200, business: response.business });
+        })
+        .catch((err) => {
+          return res.json({ status: 500 });
+        });
+    } else if (id === "social-urls") {
+      vendor.socialUrls = req.body;
+      vendor
+        .save()
+        .then((response) => {
+          return res.json({ status: 200, socialUrls: response.socialUrls });
+        })
+        .catch((err) => {
+          return res.json({ status: 500 });
+        });
+    } else if (id === "update-password") {
+      if (!vendor.owner) vendor.owner = {};
+      vendor.owner.password = hashSync(req.body.password, HASH_SALT_ROUND);
+      vendor
+        .save()
+        .then(() => {
+          return res.json({ status: 200 });
+        })
+        .catch((err) => {
+          return res.json({ status: 500 });
+        });
+    } else if (id === "store") {
+      const store = req.body;
+      vendor.store = store;
+      await vendor.save();
+      return res.json({ status: 200 });
+    } else if (id === "images") {
+      const files = req.files;
+      const labels = JSON.parse(req.body.labels || "");
+      const images = vendor.images;
+      files.forEach((file, index) => {
+        if (labels[index] === "logo") {
+          images.logoUrl = file.path;
+        } else if (labels[index] === "finder") {
+          images.finderUrl = file.path;
+        } else if (labels[index] === "hero") {
+          images.slideUrls.push(file.path);
+        }
+      });
+      vendor.images = images;
+      await vendor.save();
+      return res.json({ status: 200 });
+    } else if (id === "open") {
+      const { open } = req.body;
+      vendor.isOpen = open;
+      await vendor.save();
+      return res.json({ status: 200 });
+    }
+  }
+);
+
+router.put("/profile/shipping/:method", vendorMiddleware, async (req, res) => {
+  const { method } = req.params;
   const vendor = req.vendor;
-  if (id === "business") {
-    vendor.business = req.body;
-    vendor
-      .save()
-      .then((response) => {
-        return res.json({ status: 200, business: response.business });
-      })
-      .catch((err) => {
-        return res.json({ status: 500 });
-      });
-  } else if (id === "social-urls") {
-    vendor.socialUrls = req.body;
-    vendor
-      .save()
-      .then((response) => {
-        return res.json({ status: 200, socialUrls: response.socialUrls });
-      })
-      .catch((err) => {
-        return res.json({ status: 500 });
-      });
-  } else if (id === "update-password") {
-    if (!vendor.owner) vendor.owner = {};
-    vendor.owner.password = hashSync(req.body.password, HASH_SALT_ROUND);
-    vendor
-      .save()
-      .then(() => {
-        return res.json({ status: 200 });
-      })
-      .catch((err) => {
-        return res.json({ status: 500 });
-      });
+  if (method === "service") {
+    const { services } = req.body;
+    vendor.shipping.services = services;
+    await vendor.save();
+    return res.json({ status: 200 });
+  } else if (method === "parcel") {
+    const parcel = req.body;
+    const id = parcel._id;
+    if (id) {
+      vendor.shipping.parcels = (vendor.shipping.parcels || []).map((item) =>
+        item._id.toString() === id ? parcel : item
+      );
+    } else {
+      vendor.shipping.parcels = [...(vendor.shipping.parcels || []), parcel];
+    }
+    await vendor.save();
+    return res.json({ status: 200 });
   }
 });
 
-router.put("/:id", async (req, res) => {
-  let data = await vendorModel.findById(req.params.id);
-  data = {
-    ...data,
-    ...req.body,
-  };
-  res.send(await vendorModel.findByIdAndUpdate(req.params.id, data));
-});
+router.put(
+  "/profile/fulfillment/:method",
+  vendorMiddleware,
+  async (req, res) => {
+    const { method } = req.params;
+    const vendor = req.vendor;
+    const fulfillment = vendor.fulfillment;
+    if (method === "pickup") {
+      const { leadTime, pickupDays } = req.body;
+      fulfillment.pickup = {
+        leadTime,
+        days: pickupDays,
+      };
+      await vendor.save();
+      return res.json({ status: 200 });
+    } else if (method === "delivery") {
+      const { leadTime, deliveryDays } = req.body;
+      fulfillment.delivery = {
+        leadTime,
+        days: deliveryDays,
+      };
+      await vendor.save();
+      return res.json({ status: 200 });
+    } else if (method === "location") {
+      const location = req.body;
+      const { id } = req.query;
+      if (id) {
+        fulfillment.locations = (fulfillment.locations || []).map((item) =>
+          item._id.toString() === id ? { ...item, ...location } : item
+        );
+      } else {
+        fulfillment.locations = [...(fulfillment.locations || []), location];
+      }
+      await vendor.save();
+      return res.json({ status: 200 });
+    }
+  }
+);
+
+// router.put("/:id", async (req, res) => {
+//   let data = await vendorModel.findById(req.params.id);
+//   data = {
+//     ...data,
+//     ...req.body,
+//   };
+//   res.send(await vendorModel.findByIdAndUpdate(req.params.id, data));
+// });
+
+router.delete(
+  "/profile/shipping/parcel/:id",
+  vendorMiddleware,
+  async (req, res) => {
+    const { id } = req.params;
+    const vendor = req.vendor;
+    vendor.shipping.parcels = (vendor.shipping.parcels || []).filter(
+      (item) => item._id.toString() !== id
+    );
+    await vendor.save();
+    return res.json({ status: 200 });
+  }
+);
 
 export default router;

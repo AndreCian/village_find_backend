@@ -1,6 +1,9 @@
 import { Schema, model } from "mongoose";
 
 const customerSchema = new Schema({
+  stripeCustomerID: {
+    type: String,
+  },
   firstName: {
     type: String,
   },

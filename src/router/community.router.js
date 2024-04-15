@@ -15,7 +15,8 @@ router.get("/", async (req, res) => {
   if (code) {
     const community = await communityModel
       .findOne({ code })
-      .select("name images");
+      .select("name images shortDesc categories slug")
+      .populate("categories");
     if (community) {
       return res.json({ status: 200, community });
     } else {

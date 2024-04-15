@@ -6,37 +6,316 @@ import {
   STRIPE_CONNECT_WEBHOOK_SIGN,
   FRONTEND_URL,
 } from "../config";
-
-import stripeAccModel from "../model/stripeAcc.model";
+import cartModel from "../model/cart.model";
+import paymentIntentModel from "../model/paymentintent.model";
+import customerMiddleware from "../middleware/customer.middleware";
+import stripeAccountModel from "../model/stripeaccount.model";
+import stripeCustomerModel from "../model/stripecustomer.model";
+import vendorModel from "../model/vendor.model";
+import customerModel from "../model/customer.model";
 
 const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
 
-export const connectStripe = async (accId) => {
-  console.log("Stripe connecting part...", accId);
-  let accountId = accId;
-  if (!accountId) {
-    const account = await stripeClient.accounts.create({
-      type: "express",
+const connectStripe = async (vendor) => {
+  try {
+    let accountId = vendor.stripeAccountID;
+    if (!accountId) {
+      const stripeAccount = await stripeAccountModel.findOne({
+        vendorID: vendor._id,
+      });
+      if (!stripeAccount) {
+        const account = await stripeClient.accounts.create({
+          type: "express",
+        });
+        accountId = account.id;
+        await stripeAccountModel.create({
+          vendorID: vendor._id,
+          stripeAccountID: account.id,
+        });
+      } else {
+        accountId = stripeAccount.stripeAccountID;
+      }
+    }
+    const accountLink = await stripeClient.accountLinks.create({
+      account: accountId,
+      type: "account_onboarding",
+      refresh_url: `${FRONTEND_URL}`,
+      return_url: `${FRONTEND_URL}/vendor/profile/bank-detail?accountID=${accountId}`,
     });
-    accountId = account.id;
-  }
-  console.log("Account Id...", accountId);
-  const accountLink = await stripeClient.accountLinks.create({
-    account: accountId,
-    type: "account_onboarding",
-    refresh_url: `${FRONTEND_URL}`,
-    return_url: `${FRONTEND_URL}/vendor/profile/bank-detail?acc_id=${accountId}`,
-  });
 
-  return {
-    url: accountLink.url,
-    id: accountId,
-  };
+    return {
+      url: accountLink.url,
+      id: accountId,
+    };
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const createCustomer = async (
+  customer,
+  connectedAccountID,
+  paymentMethodID
+) => {
+  const checkCustomer = await stripeCustomerModel.findOne({
+    customerID: customer._id,
+    vendorConnectedID: connectedAccountID,
+    paymentMethodID,
+  });
+  if (!checkCustomer) {
+    const stripeCustomer = await stripeClient.customers.create(
+      {
+        name: `${customer.firstName} ${customer.lastName}`,
+        email: customer.email,
+        phone: customer.phone,
+      },
+      { stripeAccount: connectedAccountID }
+    );
+    const platformCustomer = await stripeClient.customers.create({
+      name: `${customer.firstName} ${customer.lastName}`,
+      email: customer.email,
+      phone: customer.phone,
+      metadata: {
+        connectedAccountId: connectedAccountID,
+        connectedAccountCustomerId: stripeCustomer.id,
+      },
+    });
+    // await attachPaymentMethod(
+    //   connectedAccountID,
+    //   paymentMethodID,
+    //   stripeCustomer.id
+    // );
+    await stripeCustomerModel.create({
+      customerID: customer._id,
+      vendorConnectedID: connectedAccountID,
+      paymentMethodID,
+      stripeCustomerID: platformCustomer.id,
+    });
+    return stripeCustomer;
+  } else {
+    const stripeCustomer = await stripeClient.customers.retrieve(
+      checkCustomer.stripeCustomerID,
+      { stripeAccount: connectedAccountID }
+    );
+    await attachPaymentMethod(
+      connectedAccountID,
+      paymentMethodID,
+      stripeCustomer.id
+    );
+    return stripeCustomer;
+  }
+  // }
+  // return checkCustomer;
+};
+
+const createTransfer = async (
+  amount,
+  applicationFeePercent,
+  connectedAccountID
+) => {
+  console.log("---------------Application Fee Percent", applicationFeePercent);
+  try {
+    const transfer = await stripeClient.transfers.create({
+      amount: parseInt(amount * (100 - applicationFeePercent)),
+      currency: "usd",
+      destination: connectedAccountID,
+    });
+    return transfer;
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const createPrice = async (cart, connectedAccountID) => {
+  return await stripeClient.prices.create(
+    {
+      unit_amount: parseInt(
+        cart.price * cart.quantity * (cart.subscription.duration || 1) * 100
+      ),
+      currency: "usd",
+      recurring: {
+        interval: cart.subscription.frequency.unit,
+        interval_count: cart.subscription.frequency.interval,
+      },
+      product_data: {
+        name: cart.inventoryId.productId.name,
+        metadata: {
+          category: cart.inventoryId.productId.category,
+        },
+      },
+    },
+    { stripeAccount: connectedAccountID }
+  );
+};
+
+const createSubscription = async (
+  customerId,
+  priceId,
+  connectedAccountId,
+  applicationFeePercent
+) => {
+  try {
+    console.log("-------------------Customer ID", customerId);
+    const subscription = await stripeClient.subscriptions.create(
+      {
+        customer: customerId,
+        items: [{ price: priceId }],
+        application_fee_percent: applicationFeePercent, // For a percentage fee
+        // or
+        // application_fee_amount: applicationFeeAmount, // For a fixed amount fee
+        expand: ["latest_invoice.payment_intent"],
+      },
+      {
+        stripeAccount: connectedAccountId, // This header is used for making a request on behalf of a connected account
+      }
+    );
+
+    return subscription;
+  } catch (err) {
+    console.error("Failed to create subscription:", err);
+    // Handle errors appropriately in your app
+  }
+};
+
+const attachPaymentMethod = async (
+  connectedAccountID,
+  paymentMethodID,
+  customerID
+) => {
+  console.log("------------Customer ID", customerID);
+  await stripeClient.paymentMethods.attach(paymentMethodID, {
+    customer: customerID,
+  });
+  await stripeClient.customers.update(
+    customerID,
+    {
+      invoice_settings: {
+        default_payment_method: paymentMethodID,
+      },
+    },
+    { stripeAccount: connectedAccountID }
+  );
+};
+
+const fulfillOrders = async (customerID) => {
+  try {
+    const cartItems = await cartModel
+      .find({
+        customerId: customerID,
+        status: "active",
+      })
+      .populate({
+        path: "vendorId",
+      })
+      .populate({
+        path: "inventoryId",
+        populate: {
+          path: "productId",
+        },
+      });
+    const customer = await customerModel.findById(customerID);
+
+    const subscriptions = cartItems.filter(
+      (item) => item.subscription.issubscribed
+    );
+    const regularItems = cartItems.filter(
+      (item) => !item.subscription.issubscribed
+    );
+
+    // regularItems.forEach(async (item) => {
+    //   createTransfer(
+    //     item.price * item.quantity,
+    //     item.vendorId.commission,
+    //     item.vendorId.stripeAccountID
+    //   );
+    // });
+    subscriptions.forEach(async (item) => {
+      const price = await createPrice(item, item.vendorId.stripeAccountID);
+      const stripeCustomer = await createCustomer(
+        customer,
+        item.vendorId.stripeAccountID
+      );
+      const subscription = await createSubscription(
+        stripeCustomer.id,
+        price.id,
+        item.vendorId.stripeAccountID,
+        item.vendorId.commission
+      );
+    });
+  } catch (err) {
+    console.log(err);
+  }
 };
 
 router.post(
-  "/connect",
+  "/create-payment-method",
+  customerMiddleware,
+  express.json(),
+  async (req, res) => {
+    const customer = req.customer;
+    const cartItems = await cartModel
+      .find({
+        customerId: customer._id,
+        status: "active",
+      })
+      .populate({
+        path: "vendorId",
+      })
+      .populate({
+        path: "inventoryId",
+        populate: {
+          path: "productId",
+        },
+      });
+    const regularItems = cartItems.filter(
+      (item) => !item.subscription.frequency
+    );
+
+    try {
+      const { paymentMethodID } = req.body;
+      regularItems.forEach(async (item) => {
+        // const checkCustomer = await stripeCustomerModel.findOne({
+        //   customerID: customer._id,
+        //   paymentMethodID,
+        // });
+        const stripeCustomer = await createCustomer(
+          customer,
+          item.vendorId.stripeAccountID,
+          paymentMethodID
+        );
+        const paymentIntent = await stripeClient.paymentIntents.create({
+          amount: parseInt(item.price * item.quantity * 100),
+          currency,
+          payment_method: paymentMethodID,
+          customer: stripeCustomer.id,
+          confirm: true,
+          off_session: true,
+        });
+
+        await paymentIntentModel.create({
+          paymentIntentID: paymentIntent.id,
+          customerID: customer._id,
+          paymentMethod: paymentMethodID,
+        });
+      });
+
+      // console.log("-----------------Payment method", paymentMethodID);
+
+      // return res.json({
+      //   status: 200,
+      //   clientSecret: paymentIntent.client_secret,
+      // });
+      return res.json({ status: 200 });
+    } catch (error) {
+      console.log(error);
+      return res.json({ status: 400 });
+    }
+  }
+);
+
+router.post(
+  "/webhook/connect",
   express.raw({ type: "application/json" }),
   async (request, response) => {
     const sig = request.headers["stripe-signature"];
@@ -58,12 +337,14 @@ router.post(
     switch (event.type) {
       case "account.updated":
         const accountUpdated = event.data.object;
-        const stripeAccount = await stripeAccModel.findOne({
-          accId: accountUpdated.id,
+        const stripeAccount = await stripeAccountModel.findOne({
+          stripeAccountID: accountUpdated.id,
         });
-        stripeAccount.status = "Connected";
-        await stripeAccount.save();
-
+        if (stripeAccount) {
+          const vendor = await vendorModel.findById(stripeAccount.vendorID);
+          vendor.stripeAccountID = stripeAccount.stripeAccountID;
+          await vendor.save();
+        }
         // Then define and call a function to handle the event account.updated
         break;
       case "account.application.authorized":
@@ -86,7 +367,27 @@ router.post(
         const accountExternalAccountUpdated = event.data.object;
         // Then define and call a function to handle the event account.external_account.updated
         break;
-      // ... handle other event types
+      case "payment_intent.succeeded":
+        {
+          console.log("payment intent succeeded");
+          // Then define and call a function to handle the successful payment intent.
+        }
+        break;
+      case "charge.succeeded":
+        console.log("charge succeeded");
+        const intent = event.data.object;
+        const paymentIntent = await paymentIntentModel.findOne({
+          paymentIntentID: intent.payment_intent,
+        });
+        console.log(paymentIntent);
+        paymentIntent.paymentMethod = intent.payment_method;
+        await paymentIntent.save();
+        await fulfillOrders(
+          paymentIntent.customerID,
+          intent.payment_method_details.card,
+          intent.billing_details
+        );
+        break;
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
@@ -95,4 +396,11 @@ router.post(
   }
 );
 
+export {
+  connectStripe,
+  createCustomer,
+  createPrice,
+  createTransfer,
+  createSubscription,
+};
 export default router;

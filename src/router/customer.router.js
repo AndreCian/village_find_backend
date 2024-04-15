@@ -3,7 +3,7 @@ import { hash, compare } from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import customerModel from "../model/customer.model";
-
+import { createCustomer } from "../utils/stripe";
 import { SECRET_KEY } from "../config";
 
 const router = Router();
@@ -27,14 +27,14 @@ router.get("/", async (req, res) => {
       )
     );
   } catch (err) {
-    res.send(err);
+    console.log(err);
   }
 });
 
 router.get("/:id", async (req, res) => {
   res.send(await customerModel.findById(req.params.id));
 });
-//signin
+// signin
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   const authorization = req.headers.authorization;
@@ -90,7 +90,10 @@ router.post("/register", async (req, res) => {
     req.body.password = await hash(req.body.password, 10);
     res.send({
       message: "created",
-      data: await customerModel.create({ ...req.body, signup_at: new Date() }),
+      data: await customerModel.create({
+        ...req.body,
+        signup_at: new Date(),
+      }),
     });
   } catch (error) {
     res.send({ message: "Error", data: error.message });

@@ -1,134 +1,50 @@
 import express from "express";
-import mongoose from "mongoose";
 
 import cartModel from "../model/cart.model";
+import orderModel from "../model/order.model";
 import customerMiddleware from "../middleware/customer.middleware";
-import uploadMiddleware from "../multer";
 
 const router = express.Router();
-const ObjectId = mongoose.Types.ObjectId;
 
 router.get("/", customerMiddleware, async (req, res) => {
   const customer = req.customer;
+  console.log("-----------customer", customer._id);
 
   try {
-    const orders = await cartModel.aggregate([
-      {
-        $match: {
-          customerId: new ObjectId(customer._id),
-          status: "active",
-        },
-      },
-      {
-        $lookup: {
-          from: "inventories",
-          localField: "inventoryId",
-          foreignField: "_id",
-          as: "inventory",
-        },
-      },
-      {
-        $unwind: "$inventory",
-      },
-      {
-        $lookup: {
-          from: "products",
-          localField: "inventory.productId",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      {
-        $unwind: "$product",
-      },
-      {
-        $lookup: {
-          from: "styles",
-          localField: "inventory.styleId",
-          foreignField: "_id",
-          as: "style",
-        },
-      },
-      {
-        $unwind: "$style",
-      },
-      {
-        $project: {
-          cartId: "$_id",
-          orderId: "$orderId",
-          vendorId: "$vendorId",
-          image: "$inventory.image",
-          name: "$product.name",
-          price: "$price",
-          quantity: "$quantity",
-          attrValues: "$inventory.attrs",
-          attrModels: "$style.attributes",
-          soldByUnit: "$product.soldByUnit",
-          personalization: {
-            fee: "$personFee",
-            message: "$personMessage",
+    const cartItems = await cartModel
+      .find({
+        customerId: customer._id,
+        status: "active",
+      })
+      .populate({
+        path: "vendorId",
+      })
+      .populate({
+        path: "inventoryId",
+        populate: [
+          {
+            path: "productId",
           },
-          deliveryTypes: "$product.deliveryTypes",
-        },
-      },
-      {
-        $group: {
-          _id: { orderId: "$orderId", vendorId: "$vendorId" },
-          products: {
-            $push: "$$ROOT",
+          {
+            path: "styleId",
           },
-        },
-      },
-      {
-        $unset: ["products.orderId", "products.vendorId"],
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: ["$_id", { products: "$products" }],
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: "vendors",
-          localField: "vendorId",
-          foreignField: "_id",
-          as: "vendor",
-          pipeline: [{ $project: { shopName: 1 } }],
-        },
-      },
-      {
-        $unwind: "$vendor",
-      },
-      {
-        $project: { vendorId: 0 },
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: [{ shopName: "$vendor.shopName" }, "$$ROOT"],
-          },
-        },
-      },
-      {
-        $addFields: {
-          orderTotalPrice: {
-            $reduce: {
-              input: "$products",
-              initialValue: 0,
-              in: {
-                $add: [
-                  "$$value",
-                  { $multiply: ["$$this.price", "$$this.quantity"] },
-                ],
-              },
-            },
-          },
-        },
-      },
-    ]);
-    return res.send({ status: 200, orders });
+        ],
+      });
+    return res.send(cartItems);
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
+router.get("/count", customerMiddleware, async (req, res) => {
+  const customer = req.customer;
+  try {
+    const count = await cartModel.countDocuments({
+      customerId: customer._id,
+      status: "active",
+    });
+    return res.json({ status: 200, count });
   } catch (err) {
     console.log(err);
     return res.json({ status: 500 });
@@ -138,95 +54,166 @@ router.get("/", customerMiddleware, async (req, res) => {
 router.post(
   "/",
   customerMiddleware,
-  uploadMiddleware.single("image"),
+  // uploadMiddleware.single("image"),
   async (req, res) => {
     const customer = req.customer;
     const {
       inventoryId,
       vendorId,
+      price,
       quantity,
-      isPersonalized,
-      personFee,
-      personMessage,
+      personalization,
+      subscription,
     } = req.body;
-    const logoFileSrc = req.file;
+    // const logoFileSrc = req.file;
 
     try {
       const cartItem = await cartModel.findOne({
-        inventoryId,
         customerId: customer._id,
+        inventoryId,
         status: "active",
       });
+
       if (cartItem) {
-        return res.json({ status: 400 });
+        cartItem.quantity += quantity;
+        await cartItem.save();
+      } else {
+        const count = await cartModel.countDocuments();
+        await cartModel.create({
+          orderId: count + 1,
+          customerId: customer._id,
+          vendorId,
+          inventoryId,
+          price,
+          quantity,
+          personalization,
+          subscription,
+          status: "active",
+        });
       }
-
-      const cartItems = await cartModel.aggregate([
-        {
-          $match: {
-            customerId: new ObjectId(customer._id),
-            vendorId: new ObjectId(vendorId),
-            status: "active",
-          },
-        },
-        {
-          $project: {
-            orderId: "$orderId",
-          },
-        },
-      ]);
-      const totalOrders = await cartModel.aggregate([
-        {
-          $match: {
-            status: "active",
-          },
-        },
-        {
-          $group: {
-            _id: { customerId: "$customerId", orderId: "$orderId" },
-          },
-        },
-        { $count: "count" },
-      ]);
-
-      const maxOrderId =
-        cartItems.length > 0
-          ? cartItems[0].orderId
-          : (totalOrders[0]?.count || 0) + 1;
-      const payload = {
-        orderId: maxOrderId,
-        customerId: customer._id,
-        inventoryId,
-        vendorId,
-        quantity,
-        isPersonalized,
-        personFee,
-        personMessage,
-        orderLogoPath: (logoFileSrc && logoFileSrc.path) || "",
-        status: "active",
-      };
-
-      await cartModel.create(payload);
       return res.json({ status: 200 });
     } catch (err) {
-      console.log(err);
       return res.json({ status: 500 });
     }
   }
 );
 
+router.post("/checkout", customerMiddleware, async (req, res) => {
+  const { shipping, delivery, donation } = req.body;
+  const customer = req.customer;
+
+  try {
+    customer.shipping = shipping;
+    customer.delivery = delivery;
+    customer.donation = donation;
+    await customer.save();
+
+    // const cartItems = await cartModel
+    //   .find({ customerId: customer._id })
+    //   .populate({
+    //     path: "vendorId",
+    //   })
+    //   .populate({
+    //     path: "inventoryId",
+    //     populate: {
+    //       path: "productId",
+    //     },
+    //   });
+
+    // const subscriptions = cartItems.filter((item) => item.subscription);
+
+    // subscriptions.forEach(async (item) => {
+    //   const price = await createPrice(item);
+    //   await stripePriceModel.create({
+    //     cartID: item._id,
+    //     priceID: price.id,
+    //   });
+    // });
+
+    const cartItems = await cartModel
+      .find({
+        customerId: customer._id,
+        status: "active",
+      })
+      .populate({
+        path: "inventoryId",
+        populate: [
+          {
+            path: "styleId",
+          },
+          {
+            path: "productId",
+          },
+        ],
+      });
+
+    cartItems.forEach(async (item) => {
+      await orderModel.create({
+        orderId: item.orderId,
+        product: {
+          name: item.inventoryId.productId.name,
+          price: item.price,
+          quantity: item.quantity,
+          discount: item.inventoryId.styleId.discount,
+        },
+        orderInfo: {
+          isshipping: item.deliveryType === "Shipping",
+          issubscription: !!item.subscription,
+          iscsa: !!item.subscription.iscsa,
+          deliveryType: item.deliveryType,
+          createdAt: new Date(),
+          instruction: delivery.instruction,
+          address:
+            item.deliveryType === "Pickup Location"
+              ? item.pickuplocation.address
+              : delivery.street,
+          issubstitute: false,
+          personalization:
+            (item.personalization && item.personalization.message) || "",
+        },
+        customerID: customer._id,
+        vendorID: item.vendorId,
+        giftInfo: item.gift.receiver
+          ? { ...item.gift.receiver, recipient: item.gift.receiver.fullName }
+          : null,
+        createdAt: new Date(),
+        status: "under process",
+      });
+    });
+
+    return res.json({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
 router.put("/:id", customerMiddleware, async (req, res) => {
   const { id } = req.params;
-  const { quantity } = req.body;
+  const {
+    quantity,
+    subscription,
+    gift,
+    deliveryType,
+    pickuplocation,
+    fulfillday,
+  } = req.body;
   try {
     const cartItem = await cartModel.findById(id);
     if (!cartItem) {
       return res.json({ status: 404 });
     }
-    cartItem.quantity = quantity;
+    if (quantity) cartItem.quantity = quantity;
+    if (subscription) cartItem.subscription = subscription;
+    if (gift) cartItem.gift = gift;
+    if (deliveryType) cartItem.deliveryType = deliveryType;
+    if (pickuplocation) cartItem.pickuplocation = pickuplocation;
+    if (fulfillday) cartItem.fulfillday = fulfillday;
+
     await cartItem.save();
     return res.json({ status: 200 });
   } catch (err) {
+    console.log(err);
     return res.json({ status: 500 });
   }
 });

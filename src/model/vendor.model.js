@@ -2,28 +2,17 @@ import { Schema, model } from "mongoose";
 import { Types } from "mongoose";
 
 const vendorSchema = new Schema({
-  vendorId: {
-    type: Number,
-  },
-  shopName: {
-    type: String,
-  },
+  vendorId: Number,
+  shopName: String,
   community: {
     type: Types.ObjectId,
     ref: "community",
   },
-  commission: {
-    type: Number,
-  },
-  monthlyFee: {
-    type: Number,
-  },
-  address: {
-    type: String,
-  },
-  subscription: {
-    type: Object,
-  },
+  stripeAccountID: String,
+  commission: Number,
+  monthlyFee: Number,
+  address: String,
+  subscription: Object,
   owner: {
     name: String,
     email: String,
@@ -46,12 +35,75 @@ const vendorSchema = new Schema({
     youtube: String,
     linkedin: String,
   },
-  signupAt: {
-    type: Date,
+  store: {
+    orderCapacity: String,
+    shortDesc: String,
+    longDesc: String,
+    tags: [String],
+    radius: Number,
   },
-  status: {
-    type: String,
+  images: {
+    logoUrl: String,
+    finderUrl: String,
+    slideUrls: [String],
   },
+  fulfillment: {
+    pickup: {
+      leadTime: Number,
+      days: [
+        {
+          weekday: Number,
+          from: String,
+          to: String,
+        },
+      ],
+    },
+    delivery: {
+      leadTime: Number,
+      days: [
+        {
+          weekday: Number,
+          from: String,
+          to: String,
+        },
+      ],
+    },
+    locations: [
+      {
+        name: String,
+        address: String,
+        eventDate: Date,
+        pickup: {
+          weekday: Number,
+          from: String,
+          to: String,
+        },
+        instruction: String,
+        charge: Number,
+        status: String,
+      },
+    ],
+  },
+  shipping: {
+    services: [String],
+    shippoID: String,
+    parcels: [
+      {
+        name: String,
+        width: Number,
+        height: Number,
+        length: Number,
+        thickness: Number,
+        emptyWeight: Number,
+        maxWeight: Number,
+        sizeUnit: String,
+        massUnit: String,
+      },
+    ],
+  },
+  isOpen: Boolean,
+  signupAt: Date,
+  status: String,
 });
 
 export default model("vendor", vendorSchema);

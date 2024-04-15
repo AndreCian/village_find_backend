@@ -1,4 +1,5 @@
-import { Schema, model } from "mongoose";
+import { Schema, model, default as mongoose } from "mongoose";
+const ObjectId = mongoose.Types.ObjectId;
 
 const schema = new Schema({
   name: {
@@ -36,6 +37,12 @@ const schema = new Schema({
   slug: {
     type: String,
   },
+  categories: [
+    {
+      type: ObjectId,
+      ref: "category",
+    },
+  ],
   events: [
     {
       name: String,

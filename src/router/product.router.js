@@ -10,75 +10,143 @@ const router = Router();
 const ObjectId = mongoose.Types.ObjectId;
 
 router.get("/public", async (req, res) => {
-  const { community } = req.query;
+  const { community, vendor } = req.query;
 
-  const products = await productModel.aggregate([
-    {
-      $lookup: {
-        from: "inventories",
-        localField: "_id",
-        foreignField: "productId",
-        as: "inventories",
+  if (community) {
+    const products = await productModel.aggregate([
+      {
+        $lookup: {
+          from: "inventories",
+          localField: "_id",
+          foreignField: "productId",
+          as: "inventories",
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "vendors",
-        localField: "vendor",
-        foreignField: "_id",
-        as: "vendor",
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "vendor",
+          foreignField: "_id",
+          as: "vendor",
+        },
       },
-    },
-    {
-      $match: {
-        "vendor.community": new ObjectId(community),
+      {
+        $match: {
+          "vendor.community": new ObjectId(community),
+        },
       },
-    },
-    {
-      $addFields: {
-        inventory: {
-          $first: {
-            $filter: {
-              input: "$inventories",
-              as: "inventory",
-              cond: {
-                $ne: ["$$inventory.image", null],
+      {
+        $addFields: {
+          inventory: {
+            $first: {
+              $filter: {
+                input: "$inventories",
+                as: "inventory",
+                cond: {
+                  $ne: ["$$inventory.image", null],
+                },
               },
             },
           },
-        },
-        vendor: {
-          $first: "$vendor",
-        },
-      },
-    },
-    {
-      $replaceRoot: {
-        newRoot: {
-          $mergeObjects: [
-            {
-              _id: "",
-              category: "",
-              name: "",
-              shopName: "",
-              price: 0,
-              image: "",
-            },
-            {
-              _id: "$_id",
-              category: "$category",
-              name: "$name",
-              shopName: "$vendor.shopName",
-              price: "$inventory.price",
-              image: "$inventory.image",
-            },
-          ],
+          vendor: {
+            $first: "$vendor",
+          },
         },
       },
-    },
-  ]);
-
-  return res.send(products);
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              {
+                _id: "",
+                category: "",
+                name: "",
+                shopName: "",
+                price: 0,
+                image: "",
+              },
+              {
+                _id: "$_id",
+                category: "$category",
+                name: "$name",
+                shopName: "$vendor.shopName",
+                price: "$inventory.price",
+                image: "$inventory.image",
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    return res.send(products);
+  } else if (vendor) {
+    const products = await productModel.aggregate([
+      {
+        $lookup: {
+          from: "inventories",
+          localField: "_id",
+          foreignField: "productId",
+          as: "inventories",
+        },
+      },
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "vendor",
+          foreignField: "_id",
+          as: "vendor",
+        },
+      },
+      {
+        $match: {
+          "vendor._id": new ObjectId(vendor),
+        },
+      },
+      {
+        $addFields: {
+          inventory: {
+            $first: {
+              $filter: {
+                input: "$inventories",
+                as: "inventory",
+                cond: {
+                  $ne: ["$$inventory.image", null],
+                },
+              },
+            },
+          },
+          vendor: {
+            $first: "$vendor",
+          },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              {
+                _id: "",
+                category: "",
+                name: "",
+                shopName: "",
+                price: 0,
+                image: "",
+              },
+              {
+                _id: "$_id",
+                category: "$category",
+                name: "$name",
+                shopName: "$vendor.shopName",
+                price: "$inventory.price",
+                image: "$inventory.image",
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    return res.send(products);
+  }
 });
 
 router.get("/vendor", vendorMiddleware, async (req, res) => {
@@ -239,6 +307,7 @@ router.get(
               _id: 1,
               name: 1,
               slug: 1,
+              "images.logoUrl": 1,
             },
             styles: 1,
             inventories: {

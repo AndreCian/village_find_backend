@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: message },
-      ],
+      ]
     });
     if (chat.error) {
       return res.json({ status: 400 });

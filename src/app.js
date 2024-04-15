@@ -15,6 +15,7 @@ import productRouter from "./router/product.router";
 import styleRouter from "./router/style.router";
 import inventoryRouter from "./router/inventory.router";
 import cartRouter from "./router/cart.router";
+import orderRouter from "./router/order.router";
 
 import homeRouter from "./router/home.router";
 import featuredRouter from "./router/featured.router";
@@ -33,7 +34,7 @@ mongoose.connect(
   "mongodb+srv://root:SfbUVSQ2ROIJ4E44@atlascluster.goevemg.mongodb.net/VillageFinds"
 );
 
-app.use("/api/stripe/webhook", stripeRouter);
+app.use("/api/stripe", cors(), stripeRouter);
 app.use(express.json({ limit: "200mb" }));
 app.use(cors());
 
@@ -55,6 +56,7 @@ app.use("/api/products", productRouter);
 app.use("/api/styles", styleRouter);
 app.use("/api/inventories", inventoryRouter);
 app.use("/api/cart", cartRouter);
+app.use("/api/order", orderRouter);
 app.use("/api/communities/meetup", customerEventRouter);
 app.use("/api/communities", communityRouter);
 
