@@ -10,7 +10,7 @@ const router = Router();
 const ObjectId = mongoose.Types.ObjectId;
 
 router.get("/public", async (req, res) => {
-  const { community, vendor } = req.query;
+  const { community, vendor, type } = req.query;
 
   if (community) {
     const products = await productModel.aggregate([
@@ -139,6 +139,76 @@ router.get("/public", async (req, res) => {
                 shopName: "$vendor.shopName",
                 price: "$inventory.price",
                 image: "$inventory.image",
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    return res.send(products);
+  } else if (type === "subscription") {
+    const products = await productModel.aggregate([
+      {
+        $match: {
+          subscription: {
+            $ne: null,
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "inventories",
+          localField: "_id",
+          foreignField: "productId",
+          as: "inventories",
+        },
+      },
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "vendor",
+          foreignField: "_id",
+          as: "vendor",
+        },
+      },
+      {
+        $addFields: {
+          inventory: {
+            $first: {
+              $filter: {
+                input: "$inventories",
+                as: "inventory",
+                cond: {
+                  $ne: ["$$inventory.image", null],
+                },
+              },
+            },
+          },
+          vendor: {
+            $first: "$vendor",
+          },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              {
+                _id: "",
+                category: "",
+                name: "",
+                shopName: "",
+                price: 0,
+                image: "",
+              },
+              {
+                _id: "$_id",
+                category: "$category",
+                name: "$name",
+                shopName: "$vendor.shopName",
+                price: "$inventory.price",
+                image: "$inventory.image",
+                tags: ["Subscription"],
               },
             ],
           },
