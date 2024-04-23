@@ -8,7 +8,6 @@ const router = express.Router();
 
 router.get("/", customerMiddleware, async (req, res) => {
   const customer = req.customer;
-  console.log("-----------customer", customer._id);
 
   try {
     const cartItems = await cartModel

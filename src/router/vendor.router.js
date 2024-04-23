@@ -6,7 +6,6 @@ import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
 import uploadMiddleware from "../multer";
 import { connectStripe } from "../utils/stripe";
-import { connectShippo } from "../utils/shippo";
 
 import {
   SECRET_KEY,
@@ -18,40 +17,89 @@ import {
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const { communityId, vendorId } = req.query;
-  if (communityId) {
-    return res.send(
-      await vendorModel.find({ communityId: req.query.communityId })
-    );
-  } else if (vendorId) {
-    const vendor = await vendorModel
-      .findById(vendorId)
-      .select("shopName store images community")
-      .populate("community");
-    if (!vendor) {
-      return res.json({ status: 404 });
-    }
-    return res.json({ status: 200, vendor });
-  }
+  // const { communityId, vendorId } = req.query;
+  // if (communityId) {
+  //   return res.send(
+  //     await vendorModel.find({ communityId: req.query.communityId })
+  //   );
+  // } else if (vendorId) {
+  //   const vendor = await vendorModel
+  //     .findById(vendorId)
+  //     .select("shopName store images community")
+  //     .populate("community");
+  //   if (!vendor) {
+  //     return res.json({ status: 404 });
+  //   }
+  //   return res.json({ status: 200, vendor });
+  // }
   try {
     res.send(
-      await vendorModel.find(
-        (() => {
-          let obj = {};
-          if (req.query.name) obj.name = new RegExp(req.query.name, "g");
-          if (req.query.status) obj.status = req.query.status;
-          obj.signup_at = {};
-          if (req.query.from) obj.signup_at.$gte = req.query.from;
-          if (req.query.to) obj.signup_at.$lte = req.query.to;
+      await vendorModel
+        .find(
+          (() => {
+            let obj = {};
+            if (req.query.communityId) obj.community = req.query.communityId;
+            if (req.query.vendorId) obj._id = req.query.vendorId;
+            if (req.query.name) obj.name = new RegExp(req.query.name, "g");
+            if (req.query.status) obj.status = req.query.status;
+            obj.signup_at = {};
+            if (req.query.from) obj.signup_at.$gte = req.query.from;
+            if (req.query.to) obj.signup_at.$lte = req.query.to;
 
-          if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
+            if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
 
-          return obj;
-        })()
-      )
+            return obj;
+          })()
+        )
+        .populate([{ path: "community" }])
     );
   } catch (err) {
     res.send(err);
+  }
+});
+
+router.get("/auth", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    return res.send(vendor);
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
+router.get("/community", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    const community = await vendorModel
+      .findById(vendor._id)
+      .select("community communityStatus")
+      .populate("community", "name images");
+    console.log(community);
+    return res.json({ status: 200, community });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
+router.get("/goals", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    return res.json({ status: 200, goals: vendor.goals });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
+router.get("/rewards", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    return res.json({ status: 200, rewards: vendor.rewards });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
   }
 });
 
@@ -226,7 +274,11 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: vendor._id, role: "vendor" }, SECRET_KEY, {
       expiresIn: "7d",
     });
-    return res.json({ status: 200, token });
+    return res.json({
+      status: 200,
+      token,
+      profile: { fullName: vendor.owner.name },
+    });
   } catch (error) {
     console.log(error);
     return res.json({ status: 500 });
@@ -362,6 +414,45 @@ router.put(
     }
   }
 );
+
+router.put("/community", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    const { status } = req.body;
+    vendor.communityStatus = status;
+    await vendor.save();
+    return res.json({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
+router.put("/goals", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    const goals = req.body;
+    vendor.goals = goals;
+    await vendor.save();
+    return res.json({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
+router.put("/rewards", vendorMiddleware, async (req, res) => {
+  try {
+    const vendor = req.vendor;
+    const rewards = req.body;
+    vendor.rewards = rewards;
+    await vendor.save();
+    return res.json({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
 
 // router.put("/:id", async (req, res) => {
 //   let data = await vendorModel.findById(req.params.id);

@@ -8,6 +8,7 @@ const vendorSchema = new Schema({
     type: Types.ObjectId,
     ref: "community",
   },
+  communityStatus: String,
   stripeAccountID: String,
   commission: Number,
   monthlyFee: Number,
@@ -101,7 +102,14 @@ const vendorSchema = new Schema({
       },
     ],
   },
+  goals: {
+    reason: String,
+    business: String,
+    revenue: Number,
+  },
+  rewards: [String],
   isOpen: Boolean,
+  isProduct: Boolean,
   signupAt: Date,
   status: String,
 });

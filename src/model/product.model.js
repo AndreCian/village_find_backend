@@ -2,6 +2,9 @@ import mongoose, { Schema, model } from "mongoose";
 const ObjectId = mongoose.Types.ObjectId;
 
 const productSchema = new Schema({
+  id: {
+    type: String,
+  },
   vendor: {
     type: ObjectId,
     ref: "vendor",
@@ -12,6 +15,7 @@ const productSchema = new Schema({
   category: {
     type: String,
   },
+  tags: [String],
   deliveryTypes: [String],
   shortDesc: {
     type: String,
@@ -51,5 +55,7 @@ const productSchema = new Schema({
     startDate: String,
     endDate: String,
   },
+  stylesOrder: [String],
+  createdAt: Date,
 });
 export default model("product", productSchema);

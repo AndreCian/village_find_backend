@@ -16,7 +16,7 @@ router.get("/", async (req, res) => {
     if (code) {
       const community = await communityModel
         .findOne({ code })
-        .select("name images shortDesc categories slug")
+        .select("name images shortDesc categories slug categories")
         .populate("categories");
       if (community) {
         return res.json({ status: 200, community });
@@ -31,10 +31,12 @@ router.get("/", async (req, res) => {
         {
           $project: {
             name: 1,
+            code: 1,
             shortDesc: 1,
             announcement: 1,
             images: 1,
             events: 1,
+            categories: 1,
           },
         },
         {
@@ -55,14 +57,48 @@ router.get("/", async (req, res) => {
 
     res.send(
       await communityModel.aggregate([
+        // ...(req.query.category
+        //   ? [
+        //       { $unwind: "$categories" },
+        //       {
+        //         $group: {
+        //           _id: { _id: "$_id" },
+        //           name: "$name",
+        //           slug: "$slug",
+        //           shortDesc: "$shortDesc",
+        //           images: "$images",
+        //           categories: { $push: "$categories" },
+        //           count: {
+        //             $sum: {
+        //               $cond: [
+        //                 { $eq: ["$categories", req.query.category] },
+        //                 1,
+        //                 0,
+        //               ],
+        //             },
+        //           },
+        //         },
+        //       },
+        //       { $match: { count: { $gt: 0 } } },
+        //     ]
+        //   : []),
         {
           $match: (() => {
             let obj = {};
-            if (req.query.name) obj.name = new RegExp(req.query.name, "g");
+            if (req.query.name) obj.name = new RegExp(req.query.name, "i");
+            if (req.query.category)
+              obj.categories = {
+                $eq: req.query.category,
+              };
             if (req.query.status) obj.status = req.query.status;
-            obj.signup_at = {};
-            if (req.query.from) obj.signup_at.$gte = req.query.from;
-            if (req.query.to) obj.signup_at.$lte = req.query.to;
+            if (req.query.from) {
+              if (!obj.signup_at) obj.signup_at = {};
+              obj.signup_at.$gte = req.query.from;
+            }
+            if (req.query.to) {
+              if (!obj.signup_at) obj.signup_at = {};
+              obj.signup_at.$lte = req.query.to;
+            }
 
             if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
 
@@ -70,7 +106,13 @@ router.get("/", async (req, res) => {
           })(),
         },
         {
-          $project: { name: 1, slug: 1, shortDesc: 1, images: 1 },
+          $project: {
+            name: 1,
+            slug: 1,
+            shortDesc: 1,
+            images: 1,
+            categories: 1,
+          },
         },
         {
           $lookup: {
@@ -87,12 +129,14 @@ router.get("/", async (req, res) => {
             shortDesc: 1,
             images: 1,
             "vendors._id": 1,
+            categories: 1,
           },
         },
       ])
     );
   } catch (err) {
-    res.send(err);
+    console.log(err);
+    return res.json({ status: 500 });
   }
 });
 router.get("/event", communityMiddleware, async (req, res) => {

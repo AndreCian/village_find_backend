@@ -23,6 +23,7 @@ import imagryRouter from "./router/imagry.router";
 import communityRouter from "./router/community.router";
 import customerEventRouter from "./router/customerevent.router";
 import vendorRouter from "./router/vendor.router";
+import reviewRouter from "./router/review.router";
 import openaiRouter from "./router/openai";
 
 import stripeRouter from "./utils/stripe";
@@ -55,6 +56,7 @@ app.use("/api/coupons", couponRouter);
 app.use("/api/products", productRouter);
 app.use("/api/styles", styleRouter);
 app.use("/api/inventories", inventoryRouter);
+app.use("/api/reviews", reviewRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/communities/meetup", customerEventRouter);

@@ -4,6 +4,7 @@ const ObjectId = mongoose.Types.ObjectId;
 export const cartSchema = new Schema({
   orderId: Number,
   orderLogoPath: String,
+  stripeCustomerID: String,
   customerId: { type: ObjectId, ref: "customer" },
   inventoryId: { type: ObjectId, ref: "inventory" },
   vendorId: { type: ObjectId, ref: "vendor" },

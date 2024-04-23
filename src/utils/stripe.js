@@ -72,20 +72,6 @@ const createCustomer = async (
       },
       { stripeAccount: connectedAccountID }
     );
-    const platformCustomer = await stripeClient.customers.create({
-      name: `${customer.firstName} ${customer.lastName}`,
-      email: customer.email,
-      phone: customer.phone,
-      metadata: {
-        connectedAccountId: connectedAccountID,
-        connectedAccountCustomerId: stripeCustomer.id,
-      },
-    });
-    // await attachPaymentMethod(
-    //   connectedAccountID,
-    //   paymentMethodID,
-    //   stripeCustomer.id
-    // );
     await stripeCustomerModel.create({
       customerID: customer._id,
       vendorConnectedID: connectedAccountID,
@@ -98,15 +84,13 @@ const createCustomer = async (
       checkCustomer.stripeCustomerID,
       { stripeAccount: connectedAccountID }
     );
-    await attachPaymentMethod(
-      connectedAccountID,
-      paymentMethodID,
-      stripeCustomer.id
-    );
+    // await attachPaymentMethod(
+    //   connectedAccountID,
+    //   paymentMethodID,
+    //   stripeCustomer.id
+    // );
     return stripeCustomer;
   }
-  // }
-  // return checkCustomer;
 };
 
 const createTransfer = async (
@@ -183,7 +167,6 @@ const attachPaymentMethod = async (
   paymentMethodID,
   customerID
 ) => {
-  console.log("------------Customer ID", customerID);
   await stripeClient.paymentMethods.attach(paymentMethodID, {
     customer: customerID,
   });
@@ -254,59 +237,32 @@ router.post(
   express.json(),
   async (req, res) => {
     const customer = req.customer;
-    const cartItems = await cartModel
-      .find({
-        customerId: customer._id,
-        status: "active",
-      })
-      .populate({
-        path: "vendorId",
-      })
-      .populate({
-        path: "inventoryId",
-        populate: {
-          path: "productId",
-        },
-      });
-    const regularItems = cartItems.filter(
-      (item) => !item.subscription.frequency
-    );
+    const { methodID } = req.body;
 
     try {
-      const { paymentMethodID } = req.body;
-      regularItems.forEach(async (item) => {
-        // const checkCustomer = await stripeCustomerModel.findOne({
-        //   customerID: customer._id,
-        //   paymentMethodID,
-        // });
-        const stripeCustomer = await createCustomer(
-          customer,
+      const cartItems = await cartModel
+        .find({
+          customerId: customer._id,
+          status: "active",
+        })
+        .populate({
+          path: "vendorId",
+        })
+        .populate({
+          path: "inventoryId",
+          populate: {
+            path: "productId",
+          },
+        });
+      cartItems.forEach(async (item) => {
+        const customer = await createCustomer(
+          item,
           item.vendorId.stripeAccountID,
-          paymentMethodID
+          methodID
         );
-        const paymentIntent = await stripeClient.paymentIntents.create({
-          amount: parseInt(item.price * item.quantity * 100),
-          currency,
-          payment_method: paymentMethodID,
-          customer: stripeCustomer.id,
-          confirm: true,
-          off_session: true,
-        });
-
-        await paymentIntentModel.create({
-          paymentIntentID: paymentIntent.id,
-          customerID: customer._id,
-          paymentMethod: paymentMethodID,
-        });
+        item.stripeCustomerID = customer.id;
+        await item.save();
       });
-
-      // console.log("-----------------Payment method", paymentMethodID);
-
-      // return res.json({
-      //   status: 200,
-      //   clientSecret: paymentIntent.client_secret,
-      // });
-      return res.json({ status: 200 });
     } catch (error) {
       console.log(error);
       return res.json({ status: 400 });

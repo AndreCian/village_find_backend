@@ -10,294 +10,100 @@ const router = Router();
 const ObjectId = mongoose.Types.ObjectId;
 
 router.get("/public", async (req, res) => {
-  const { community, vendor, type, search } = req.query;
+  const {
+    community,
+    vendor,
+    type,
+    search,
+    category,
+    sort,
+    minPrice,
+    maxPrice,
+    featured,
+  } = req.query;
 
-  if (community) {
-    const products = await productModel.aggregate([
-      {
-        $lookup: {
-          from: "inventories",
-          localField: "_id",
-          foreignField: "productId",
-          as: "inventories",
+  const filter = {
+    $or: [
+      { name: { $regex: search || "", $options: "i" } },
+      { "vendor.shopName": { $regex: search || "", $options: "i" } },
+    ],
+  };
+  if (community) filter["vendor.community"] = new ObjectId(community);
+  if (vendor) filter["vendor._id"] = new ObjectId(vendor);
+  if (category) filter.category = category;
+  if (minPrice) filter["inventories.price"] = { $gte: Number(minPrice) };
+  if (maxPrice) filter["inventories.price"] = { $lte: Number(maxPrice) };
+
+  const products = await productModel.aggregate([
+    ...(type === "subscription"
+      ? [{ $match: { subscription: { $ne: null } } }]
+      : []),
+    {
+      $lookup: {
+        from: "inventories",
+        localField: "_id",
+        foreignField: "productId",
+        as: "inventories",
+      },
+    },
+    {
+      $lookup: {
+        from: "vendors",
+        localField: "vendor",
+        foreignField: "_id",
+        as: "vendor",
+      },
+    },
+    {
+      $match: filter,
+    },
+    ...(featured ? [{ $limit: 8 }] : []),
+    {
+      $sort: ["ascending", "descending"].includes(sort)
+        ? {
+            name: sort === "ascending" ? 1 : -1,
+          }
+        : { createdAt: 1 },
+    },
+    {
+      $addFields: {
+        inventory: {
+          $first: {
+            $filter: {
+              input: "$inventories",
+              as: "inventory",
+              cond: {
+                $ne: ["$$inventory.image", null],
+              },
+            },
+          },
+        },
+        vendor: {
+          $first: "$vendor",
         },
       },
-      {
-        $lookup: {
-          from: "vendors",
-          localField: "vendor",
-          foreignField: "_id",
-          as: "vendor",
-        },
-      },
-      {
-        $match: {
-          "vendor.community": new ObjectId(community),
-        },
-      },
-      {
-        $addFields: {
-          inventory: {
-            $first: {
-              $filter: {
-                input: "$inventories",
-                as: "inventory",
-                cond: {
-                  $ne: ["$$inventory.image", null],
+    },
+    {
+      $addFields: {
+        tags: {
+          $cond: {
+            if: {
+              $in: ["Local Subscriptions", "$deliveryTypes"],
+            },
+            then: ["Subscription", "Near By"],
+            else: {
+              $cond: {
+                if: {
+                  $in: ["Near By", "$deliveryTypes"],
                 },
-              },
-            },
-          },
-          vendor: {
-            $first: "$vendor",
-          },
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: [
-              {
-                _id: "",
-                category: "",
-                name: "",
-                shopName: "",
-                price: 0,
-                image: "",
-              },
-              {
-                _id: "$_id",
-                category: "$category",
-                name: "$name",
-                shopName: "$vendor.shopName",
-                price: "$inventory.price",
-                image: "$inventory.image",
-              },
-            ],
-          },
-        },
-      },
-    ]);
-    return res.send(products);
-  } else if (vendor) {
-    const products = await productModel.aggregate([
-      {
-        $lookup: {
-          from: "inventories",
-          localField: "_id",
-          foreignField: "productId",
-          as: "inventories",
-        },
-      },
-      {
-        $lookup: {
-          from: "vendors",
-          localField: "vendor",
-          foreignField: "_id",
-          as: "vendor",
-        },
-      },
-      {
-        $match: {
-          "vendor._id": new ObjectId(vendor),
-        },
-      },
-      {
-        $addFields: {
-          inventory: {
-            $first: {
-              $filter: {
-                input: "$inventories",
-                as: "inventory",
-                cond: {
-                  $ne: ["$$inventory.image", null],
-                },
-              },
-            },
-          },
-          vendor: {
-            $first: "$vendor",
-          },
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: [
-              {
-                _id: "",
-                category: "",
-                name: "",
-                shopName: "",
-                price: 0,
-                image: "",
-              },
-              {
-                _id: "$_id",
-                category: "$category",
-                name: "$name",
-                shopName: "$vendor.shopName",
-                price: "$inventory.price",
-                image: "$inventory.image",
-              },
-            ],
-          },
-        },
-      },
-    ]);
-    return res.send(products);
-  } else if (type === "subscription") {
-    const products = await productModel.aggregate([
-      {
-        $match: {
-          subscription: {
-            $ne: null,
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: "inventories",
-          localField: "_id",
-          foreignField: "productId",
-          as: "inventories",
-        },
-      },
-      {
-        $lookup: {
-          from: "vendors",
-          localField: "vendor",
-          foreignField: "_id",
-          as: "vendor",
-        },
-      },
-      {
-        $match: {
-          $or: [
-            {
-              name: { $regex: search, $options: "i" },
-            },
-            {
-              "vendor.shopName": { $regex: search, $options: "i" },
-            },
-          ],
-        },
-      },
-      {
-        $addFields: {
-          inventory: {
-            $first: {
-              $filter: {
-                input: "$inventories",
-                as: "inventory",
-                cond: {
-                  $ne: ["$$inventory.image", null],
-                },
-              },
-            },
-          },
-          vendor: {
-            $first: "$vendor",
-          },
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: [
-              {
-                _id: "",
-                category: "",
-                name: "",
-                shopName: "",
-                price: 0,
-                image: "",
-              },
-              {
-                _id: "$_id",
-                category: "$category",
-                name: "$name",
-                shopName: "$vendor.shopName",
-                price: "$inventory.price",
-                image: "$inventory.image",
-                tags: ["Subscription"],
-              },
-            ],
-          },
-        },
-      },
-    ]);
-    return res.send(products);
-  } else {
-    const products = await productModel.aggregate([
-      {
-        $lookup: {
-          from: "inventories",
-          localField: "_id",
-          foreignField: "productId",
-          as: "inventories",
-        },
-      },
-      {
-        $lookup: {
-          from: "vendors",
-          localField: "vendor",
-          foreignField: "_id",
-          as: "vendor",
-        },
-      },
-      {
-        $match: {
-          $or: [
-            {
-              name: { $regex: search, $options: "i" },
-            },
-            {
-              "vendor.shopName": { $regex: search, $options: "i" },
-            },
-          ],
-        },
-      },
-      {
-        $addFields: {
-          inventory: {
-            $first: {
-              $filter: {
-                input: "$inventories",
-                as: "inventory",
-                cond: {
-                  $ne: ["$$inventory.image", null],
-                },
-              },
-            },
-          },
-          vendor: {
-            $first: "$vendor",
-          },
-        },
-      },
-      {
-        $addFields: {
-          tags: {
-            $cond: {
-              if: {
-                $in: ["Local Subscriptions", "$deliveryTypes"],
-              },
-              then: ["Subscription", "Near By"],
-              else: {
-                $cond: {
-                  if: {
-                    $in: ["Near By", "$deliveryTypes"],
-                  },
-                  then: ["Near By"],
-                  else: {
-                    $cond: {
-                      if: {
-                        $ne: ["$subscription", null],
-                      },
-                      then: ["Subscription"],
-                      else: [],
+                then: ["Near By"],
+                else: {
+                  $cond: {
+                    if: {
+                      $ne: ["$subscription", null],
                     },
+                    then: ["Subscription"],
+                    else: [],
                   },
                 },
               },
@@ -305,39 +111,67 @@ router.get("/public", async (req, res) => {
           },
         },
       },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: [
-              {
-                _id: "",
-                category: "",
-                name: "",
-                shopName: "",
-                price: 0,
-                image: "",
-                tags: [],
-              },
-              {
-                _id: "$_id",
-                category: "$category",
-                name: "$name",
-                shopName: "$vendor.shopName",
-                price: "$inventory.price",
-                image: "$inventory.image",
-                tags: "$tags",
-              },
-            ],
-          },
+    },
+    {
+      $replaceRoot: {
+        newRoot: {
+          $mergeObjects: [
+            {
+              _id: "",
+              category: "",
+              name: "",
+              shopName: "",
+              price: 0,
+              image: "",
+              tags: [],
+            },
+            {
+              _id: "$_id",
+              category: "$category",
+              name: "$name",
+              shopName: "$vendor.shopName",
+              price: "$inventory.price",
+              image: "$inventory.image",
+              tags: "$tags",
+            },
+          ],
         },
       },
-    ]);
-    return res.send(products);
-  }
+    },
+  ]);
+  return res.send(products);
 });
 
 router.get("/vendor", vendorMiddleware, async (req, res) => {
+  const { name, sortBy, id, sku } = req.query;
+  const nameAndIdFilter = {
+    name: {
+      $regex: name || "",
+      $options: "i",
+    },
+    id: {
+      $regex: id || "",
+      $options: "i",
+    },
+  };
+  const skuFilter = {
+    sku: {
+      $regex: sku || "",
+      $options: "i",
+    },
+  };
+  const sort = {};
+  if (sortBy === "newest") {
+    sort.createdAt = -1;
+  } else if (sortBy === "oldest") {
+    sort.createdAt = 1;
+  } else if (sortBy === "active") {
+    sort.status = 1;
+  } else if (sortBy === "inactive") {
+    sort.status = -1;
+  }
   const products = await productModel.aggregate([
+    { $match: nameAndIdFilter },
     {
       $project: {
         name: 1,
@@ -353,6 +187,7 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
             },
           },
         },
+        createdAt: 1,
       },
     },
     {
@@ -388,6 +223,7 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
               status: "",
               image: "",
               sku: "",
+              createdAt: "",
             },
             {
               _id: "$_id",
@@ -395,11 +231,14 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
               status: "$status",
               image: "$inventory.image",
               sku: "$specification.value",
+              createdAt: "$createdAt",
             },
           ],
         },
       },
     },
+    { $match: skuFilter },
+    { $sort: sort },
   ]);
 
   return res.send(products);
@@ -583,12 +422,16 @@ router.post(
   async (req, res) => {
     const vendor = req.vendor;
     try {
+      const totalCount = await productModel.countDocuments();
       const product = await productModel.create({
         ...req.body,
         vendor: vendor._id,
         nutrition: req.file.path,
         status: "inactive",
+        id: `${totalCount + 1}`,
       });
+      if (!vendor.isProduct) vendor.isProduct = true;
+      await vendor.save();
       return res.json({ status: 200, product });
     } catch (err) {
       return res.json({ status: 500 });
@@ -603,7 +446,15 @@ router.post("/:id/:category", vendorMiddleware, async (req, res) => {
     const product = await productModel.findById(id);
     if (category === "specification") {
       const spec = req.body;
-      product.specifications = [...(product.specifications || []), spec];
+      const { specId } = req.query;
+      const specifications = product.specifications;
+      if (specifications.find((item) => item._id.toString() === specId)) {
+        product.specifications = specifications.map((item) =>
+          item._id.toString() === specId ? { ...item, ...spec } : item
+        );
+      } else {
+        product.specifications = [...specifications, spec];
+      }
     } else if (category === "customization") {
       const custom = req.body;
       product.customization = custom;
@@ -658,11 +509,22 @@ router.put(
   }
 );
 
-// router.put("/:id/:category", vendorMiddleware, async (req, res) => {
-//   if (category === 'style') {
+router.put("/:id/:category", vendorMiddleware, async (req, res) => {
+  const { id, category } = req.params;
 
-//   }
-// });
+  try {
+    const product = await productModel.findById(id);
+    if (category === "specification") {
+      const specifications = req.body;
+      product.specifications = specifications;
+    }
+    await product.save();
+    return res.json({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 404 });
+  }
+});
 
 router.delete("/:id", vendorMiddleware, async (req, res) => {
   res.send(await productModel.findByIdAndDelete(req.params.id));

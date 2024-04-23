@@ -37,12 +37,7 @@ const schema = new Schema({
   slug: {
     type: String,
   },
-  categories: [
-    {
-      type: ObjectId,
-      ref: "category",
-    },
-  ],
+  categories: [String],
   events: [
     {
       name: String,

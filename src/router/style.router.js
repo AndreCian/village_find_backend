@@ -5,6 +5,8 @@ import styleModel from "../model/style.model";
 
 import customerMiddleware from "../middleware/customer.middleware";
 import vendorMiddleware from "../middleware/vendor.middleware";
+import vendorModel from "../model/vendor.model";
+import productModel from "../model/product.model";
 
 const router = express.Router();
 
@@ -26,7 +28,9 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
     .find({ productId })
     .select("-productId -inventories");
 
-  return res.json({ status: 200, styles });
+  const product = await productModel.findById(productId);
+
+  return res.json({ status: 200, styles, orderIDS: product.stylesOrder });
 });
 
 router.get("/:id", vendorMiddleware, async (req, res) => {
@@ -82,51 +86,122 @@ router.put("/:id/discount", vendorMiddleware, async (req, res) => {
   }
 });
 
+router.put("/:id/status", vendorMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const style = await styleModel.findById(id);
+    style.status = status;
+    await style.save();
+
+    return res.json({ status: 200 });
+  } catch (err) {
+    return res.json({ status: 500 });
+  }
+});
+
+router.put("/order/place", vendorMiddleware, async (req, res) => {
+  try {
+    const { productID } = req.query;
+    const order = req.body;
+    const product = await productModel.findById(productID);
+    product.stylesOrder = order;
+    await product.save();
+    return res.json({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    return res.json({ status: 500 });
+  }
+});
+
 router.put("/:id/inventory", vendorMiddleware, async (req, res) => {
   const { id } = req.params;
   const inventories = req.body || [];
 
   try {
-    const style = await styleModel.findById(id).populate("inventories");
+    // const style = await styleModel.findById(id).populate("inventories");
+    // const styleInvents = style.inventories || [];
+
+    // const invents = await Promise.all(
+    //   inventories.map((inventory, inventIndex) => {
+    //     return new Promise((resolve, reject) => {
+    //       const styleInvent = styleInvents[inventIndex];
+    //       if (!styleInvent) {
+    //         inventoryModel
+    //           .create({
+    //             styleId: style._id,
+    //             product: style.productId,
+    //             ...inventory,
+    //           })
+    //           .then((invent) => {
+    //             resolve(invent);
+    //           })
+    //           .catch((err) => {
+    //             reject(err);
+    //           });
+    //       } else {
+    //         inventoryModel
+    //           .findByIdAndUpdate(styleInvent._id, inventory)
+    //           .then((invent) => resolve(invent))
+    //           .catch((err) => reject(err));
+    //       }
+    //     });
+    //   })
+    // );
+
+    // const savingJson = invents.map((invent) => invent._id);
+    // const rawStyle = await styleModel.findById(id);
+    // rawStyle.inventories = savingJson;
+
+    // await rawStyle.save();
+
+    const style = await styleModel.findById(id);
     const styleInvents = style.inventories || [];
+    let savingJson = [];
+    if (inventories.length === 0) {
+      const invents = await Promise.all(
+        inventories.map(
+          (item) =>
+            new Promise((resolve, reject) => {
+              inventoryModel
+                .create({
+                  styleId: style._id,
+                  productId: style.productId,
+                  ...item,
+                })
+                .then((res) => resolve(res))
+                .catch((err) => reject(err));
+            })
+        )
+      );
+      savingJson = invents.map((item) => item._id);
+      style.inventories = savingJson;
+      await style.save();
+    } else {
+      styleInvents.forEach(async (inventID) => {
+        const item = inventories.find(
+          (item) => item._id === inventID.toString()
+        );
+        if (item) {
+          await inventoryModel.findByIdAndUpdate(inventID, {
+            ...item,
+          });
+        }
+      });
+      savingJson = styleInvents.map((item) => item.toString());
+    }
 
-    const invents = await Promise.all(
-      inventories.map((inventory, inventIndex) => {
-        return new Promise((resolve, reject) => {
-          const styleInvent = styleInvents[inventIndex];
-          if (!styleInvent) {
-            inventoryModel
-              .create({
-                styleId: style._id,
-                product: style.productId,
-                ...inventory,
-              })
-              .then((invent) => {
-                resolve(invent);
-              })
-              .catch((err) => {
-                reject(err);
-              });
-          } else {
-            inventoryModel
-              .findByIdAndUpdate(styleInvent._id, inventory)
-              .then((invent) => resolve(invent))
-              .catch((err) => reject(err));
-          }
-        });
-      })
-    );
-
-    const savingJson = invents.map((invent) => invent._id);
-    const rawStyle = await styleModel.findById(id);
-    rawStyle.inventories = savingJson;
-
-    await rawStyle.save();
     return res.json({ status: 200, ids: savingJson });
   } catch (err) {
     console.log(err);
     return res.json({ status: 500 });
   }
+});
+
+router.put("/place", vendorMiddleware, async (req, res) => {
+  try {
+  } catch (err) {}
 });
 
 export default router;
