@@ -57,7 +57,9 @@ const router = express.Router();
 router.get("/vendor", vendorMiddleware, async (req, res) => {
   try {
     const vendor = req.vendor;
-    const orders = await orderModel.find();
+    const orders = await orderModel.find({
+      vendorID: vendor._id,
+    });
     return res.send(orders);
   } catch (err) {
     throw new Error(err);
