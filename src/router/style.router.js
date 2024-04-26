@@ -53,6 +53,9 @@ router.post("/", vendorMiddleware, async (req, res) => {
       name,
       attributes,
     });
+    const product = await productModel.findById(productId);
+    product.stylesOrder = [...(product.stylesOrder || []), style._id];
+    await product.save();
     return res.json({ status: 200, styleId: style._id });
   } catch (err) {
     return res.json({ status: 500 });

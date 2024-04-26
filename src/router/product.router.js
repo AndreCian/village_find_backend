@@ -143,6 +143,7 @@ router.get("/public", async (req, res) => {
 });
 
 router.get("/vendor", vendorMiddleware, async (req, res) => {
+  const vendor = req.vendor;
   const { name, sortBy, id, sku } = req.query;
   const nameAndIdFilter = {
     name: {
@@ -171,6 +172,11 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
     sort.status = -1;
   }
   const products = await productModel.aggregate([
+    {
+      $match: {
+        vendor: new ObjectId(vendor._id),
+      },
+    },
     { $match: nameAndIdFilter },
     {
       $project: {
@@ -421,10 +427,12 @@ router.post(
   uploadMiddleware.single("nutrition"),
   async (req, res) => {
     const vendor = req.vendor;
+    const reqJson = req.body;
     try {
       const totalCount = await productModel.countDocuments();
       const product = await productModel.create({
-        ...req.body,
+        ...reqJson,
+        deliveryTypes: JSON.parse(reqJson.deliveryTypes),
         vendor: vendor._id,
         nutrition: req.file.path,
         status: "inactive",
@@ -527,7 +535,14 @@ router.put("/:id/:category", vendorMiddleware, async (req, res) => {
 });
 
 router.delete("/:id", vendorMiddleware, async (req, res) => {
-  res.send(await productModel.findByIdAndDelete(req.params.id));
+  const { id } = req.params;
+  try {
+    await productModel.findByIdAndDelete(id);
+    return res.send({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
 });
 
 export default router;
