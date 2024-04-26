@@ -61,6 +61,7 @@ router.post(
       vendorId,
       price,
       quantity,
+      discount,
       personalization,
       subscription,
     } = req.body;
@@ -85,6 +86,7 @@ router.post(
           inventoryId,
           price,
           quantity,
+          discount,
           personalization,
           subscription,
           status: "active",
@@ -102,8 +104,8 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
   const customer = req.customer;
 
   try {
-    customer.shipping = shipping;
-    customer.delivery = delivery;
+    // customer.shipping = shipping;
+    // customer.delivery = delivery;
     customer.donation = donation;
     await customer.save();
 
@@ -147,7 +149,7 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
       });
 
     cartItems.forEach(async (item) => {
-      await orderModel.create({
+      await orderModforEachel.create({
         orderId: item.orderId,
         product: {
           name: item.inventoryId.productId.name,

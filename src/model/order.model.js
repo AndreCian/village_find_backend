@@ -54,6 +54,10 @@ const ObjectId = mongoose.Types.ObjectId;
 
 const OrderSchema = new Schema({
   orderID: Number,
+  vendorID: {
+    type: ObjectId,
+    ref: "vendor",
+  },
   customerName: String,
   deliveryType: String,
   deliveryInfo: {
@@ -61,7 +65,7 @@ const OrderSchema = new Schema({
     classification: String,
     address: String,
     instruction: String,
-    isSubstitute: String,
+    isSubstitute: Boolean,
   },
   gift: {
     recipient: String,
@@ -98,6 +102,7 @@ const OrderSchema = new Schema({
     quantity: Number,
     discount: Number,
   },
+  status: String,
 });
 
 export default mongoose.model("order", OrderSchema);

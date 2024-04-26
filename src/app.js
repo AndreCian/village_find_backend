@@ -27,13 +27,12 @@ import reviewRouter from "./router/review.router";
 import openaiRouter from "./router/openai";
 
 import stripeRouter from "./utils/stripe";
+import { MONGODB_URI } from "./config";
 
 const PORT = 8080;
 const app = express();
 
-mongoose.connect(
-  "mongodb+srv://root:SfbUVSQ2ROIJ4E44@atlascluster.goevemg.mongodb.net/VillageFinds"
-);
+mongoose.connect(MONGODB_URI);
 
 app.use("/api/stripe", cors(), stripeRouter);
 app.use(express.json({ limit: "200mb" }));

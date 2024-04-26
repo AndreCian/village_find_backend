@@ -109,7 +109,6 @@ router.get("/check", customerMiddleware, async (req, res) => {
       productID,
       customerID: customer._id,
     });
-    console.log("review check------------------", checkReview);
     return res.json({ reviewed: !!checkReview });
   } catch (err) {
     console.log(err);

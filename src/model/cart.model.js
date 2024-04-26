@@ -10,6 +10,7 @@ export const cartSchema = new Schema({
   vendorId: { type: ObjectId, ref: "vendor" },
   price: Number,
   quantity: Number,
+  discount: Number,
   deliveryType: String,
   personalization: {
     fee: Number,
