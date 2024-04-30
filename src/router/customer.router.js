@@ -59,7 +59,12 @@ router.post("/login", async (req, res) => {
 
   try {
     const user = await customerModel
-      .findOne({ email })
+      .findOne({
+        $or: [
+          { email },
+          { phone: email }
+        ]
+      })
       .select("firstName lastName zipcode password");
     if (!user) {
       return res.json({ status: 404 });

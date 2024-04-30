@@ -263,7 +263,16 @@ router.post("/login", async (req, res) => {
 
   const { email, password } = req.body;
   try {
-    const vendor = await vendorModel.findOne({ "owner.email": email });
+    const vendor = await vendorModel.findOne({
+      $or: [
+        {
+          "owner.email": email
+        },
+        {
+          "owner.phone": email
+        }
+      ]
+    });
     if (!vendor) {
       return res.json({ status: 404 });
     }

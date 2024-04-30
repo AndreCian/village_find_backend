@@ -10,7 +10,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-    res.send({ message: "created", data: await metricModel.create(req.body) });
+    res.send({ message: "created", data: await metricModel.create({ ...req.body, status: 'inactive' }) });
 });
 
 router.put("/", async (req, res) => {
