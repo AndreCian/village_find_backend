@@ -69,7 +69,6 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res.json({ status: 404 });
     }
-    console.log(user);
     const isEqual = await compare(password, user.password);
     if (!isEqual) {
       return res.json({ status: 400 });

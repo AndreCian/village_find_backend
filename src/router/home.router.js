@@ -7,7 +7,6 @@ router.post("/", upload.array("images"), async (req, res) => {
     if (!(await homeModel.findOne({})))
         await homeModel.create({})
     let data = {};
-    console.log(req.files);
     data[req.query.section] = {
         ...req.body,
         bodyText: (() => { try { return JSON.parse(req.body.bodyText) } catch (err) { return req.body.bodyText } })(),

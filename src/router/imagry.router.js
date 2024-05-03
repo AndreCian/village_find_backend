@@ -6,7 +6,6 @@ const router = Router();
 router.post('/', upload.single("image"), async (req, res) => {
     let body = { image: "" };
     body.image = req.file.path;
-    console.log(req.file);
     if (await imagryModel.findOne({})) {
         res.send({ message: "updated", data: await imagryModel.findOneAndUpdate({}, body) });
     }

@@ -75,7 +75,6 @@ router.get("/community", vendorMiddleware, async (req, res) => {
       .findById(vendor._id)
       .select("community communityStatus")
       .populate("community", "name images");
-    console.log(community);
     return res.json({ status: 200, community });
   } catch (err) {
     console.log(err);

@@ -12,7 +12,6 @@ export default async (req, res, next) => {
   const token = authorization.slice("Bearer ".length);
   try {
     const tokenUser = await jwt.verify(token, SECRET_KEY);
-    console.log(tokenUser);
     if (!tokenUser.id || tokenUser.role !== "community-organizer") {
       return res.json({ status: 401 });
     }

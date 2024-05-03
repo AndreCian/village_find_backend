@@ -36,7 +36,7 @@ router.get("/public", async (req, res) => {
 
   const products = await productModel.aggregate([
     ...(type === "subscription"
-      ? [{ $match: { subscription: { $ne: null } } }]
+      ? [{ $match: { subscription: { $exists: true, $ne: null } } }]
       : []),
     {
       $lookup: {
@@ -61,8 +61,8 @@ router.get("/public", async (req, res) => {
     {
       $sort: ["ascending", "descending"].includes(sort)
         ? {
-            name: sort === "ascending" ? 1 : -1,
-          }
+          name: sort === "ascending" ? 1 : -1,
+        }
         : { createdAt: 1 },
     },
     {
@@ -88,7 +88,10 @@ router.get("/public", async (req, res) => {
         tags: {
           $cond: {
             if: {
-              $in: ["Local Subscriptions", "$deliveryTypes"],
+              $and: [
+                { $in: ["Local Subscriptions", "$deliveryTypes"] },
+                { $ne: ['$subscription', null] }
+              ]
             },
             then: ["Subscription", "Near By"],
             else: {
@@ -99,11 +102,9 @@ router.get("/public", async (req, res) => {
                 then: ["Near By"],
                 else: {
                   $cond: {
-                    if: {
-                      $ne: ["$subscription", null],
-                    },
-                    then: ["Subscription"],
-                    else: [],
+                    if: { "$eq": [{ "$ifNull": ["$subscription", ""] }, ""] },
+                    then: [],
+                    else: ["Subscription"],
                   },
                 },
               },

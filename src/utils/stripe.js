@@ -343,7 +343,6 @@ router.get("/oauth", express.json(), async (req, res) => {
 
   // Validate the state parameter here if you use it to protect against CSRF
 
-  console.log(state);
   const vendor = await vendorModel.findById(state);
   if (!vendor) {
     return res.status(500).send("Failed to stripe oauth.");
@@ -358,8 +357,6 @@ router.get("/oauth", express.json(), async (req, res) => {
 
     const connectedAccountId = response.stripe_user_id;
     const accessToken = response.access_token;
-
-    console.log(connectedAccountId);
 
     await stripeAccountModel.create({
       vendorID: vendor._id,
