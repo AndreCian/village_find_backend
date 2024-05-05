@@ -123,46 +123,10 @@ router.put("/:id/inventory", vendorMiddleware, async (req, res) => {
   const inventories = req.body || [];
 
   try {
-    // const style = await styleModel.findById(id).populate("inventories");
-    // const styleInvents = style.inventories || [];
-
-    // const invents = await Promise.all(
-    //   inventories.map((inventory, inventIndex) => {
-    //     return new Promise((resolve, reject) => {
-    //       const styleInvent = styleInvents[inventIndex];
-    //       if (!styleInvent) {
-    //         inventoryModel
-    //           .create({
-    //             styleId: style._id,
-    //             product: style.productId,
-    //             ...inventory,
-    //           })
-    //           .then((invent) => {
-    //             resolve(invent);
-    //           })
-    //           .catch((err) => {
-    //             reject(err);
-    //           });
-    //       } else {
-    //         inventoryModel
-    //           .findByIdAndUpdate(styleInvent._id, inventory)
-    //           .then((invent) => resolve(invent))
-    //           .catch((err) => reject(err));
-    //       }
-    //     });
-    //   })
-    // );
-
-    // const savingJson = invents.map((invent) => invent._id);
-    // const rawStyle = await styleModel.findById(id);
-    // rawStyle.inventories = savingJson;
-
-    // await rawStyle.save();
-
     const style = await styleModel.findById(id);
     const styleInvents = style.inventories || [];
     let savingJson = [];
-    if (inventories.length === 0) {
+    if (styleInvents.length === 0) {
       const invents = await Promise.all(
         inventories.map(
           (item) =>
@@ -204,7 +168,7 @@ router.put("/:id/inventory", vendorMiddleware, async (req, res) => {
 
 router.put("/place", vendorMiddleware, async (req, res) => {
   try {
-  } catch (err) {}
+  } catch (err) { }
 });
 
 export default router;

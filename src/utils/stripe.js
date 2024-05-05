@@ -463,7 +463,7 @@ router.post(
 );
 
 router.post(
-  "/webhook/connect",
+  "/webhook/platform",
   express.raw({ type: "application/json" }),
   async (request, response) => {
     const sig = request.headers["stripe-signature"];

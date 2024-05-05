@@ -227,9 +227,15 @@ router.post("/register", async (req, res) => {
       signupAt: new Date(),
     };
 
+    const vendor = await vendorModel.create(vendorJson);
+    const token = jwt.sign({ id: vendor._id, role: "vendor" }, SECRET_KEY, {
+      expiresIn: "7d",
+    });
+
     res.json({
       status: 200,
-      vendor: await vendorModel.create(vendorJson),
+      token,
+      vendor
     });
   } catch (error) {
     console.log(error);

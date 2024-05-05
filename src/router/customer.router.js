@@ -90,15 +90,20 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/register", async (req, res) => {
+  const customer = req.body;
   try {
-    req.body.password = await hash(req.body.password, 10);
-    res.send({
-      message: "created",
-      data: await customerModel.create({
-        ...req.body,
-        signup_at: new Date(),
-      }),
-    });
+    customer.password = await hash(customer.password, 10);
+    customer.signup_at = new Date();
+    const profile = await customerModel.create(customer);
+    const token = await jwt.sign(
+      {
+        id: profile._id,
+        role: "customer",
+      },
+      SECRET_KEY,
+      { expiresIn: "7d" }
+    );
+    return res.send({ status: 200, token, profile });
   } catch (error) {
     res.send({ message: "Error", data: error.message });
   }
