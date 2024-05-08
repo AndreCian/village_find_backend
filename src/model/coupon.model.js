@@ -1,27 +1,40 @@
 import { Schema, model } from "mongoose";
 
+export const CouponType = Object.freeze({
+  FreeShipping: 'freeshipping',
+  Percent: 'percent',
+  Tiered: 'tiered'
+});
+
 const schema = new Schema({
+  name: String,
   type: {
     type: String,
+    enum: Object.values(CouponType)
   },
-  date: {
-    type: Object,
+  shipping: {
+    mode: String,
+    code: String,
+    amount: Number
   },
-  usage: {
-    type: Object,
+  percent: {
+    code: String,
+    discount: Number
   },
-  code: String,
-  discount: Number,
   conditions: [
     {
       discount: Number,
-      maximum: Number,
       minimum: Number,
-    },
+      maximum: Number
+    }
   ],
   target: {
-    type: Object,
+    mode: String,
+    id: String
   },
+  startDate: Date,
+  endDate: Date,
+  status: String
 });
 
 export default model("coupon", schema);

@@ -72,7 +72,7 @@ router.get("/community", vendorMiddleware, async (req, res) => {
   try {
     const vendor = req.vendor;
     const community = await vendorModel
-      .findById(vendor._id)
+      .findOne({ _id: vendor._id })
       .select("community communityStatus")
       .populate("community", "name images");
     return res.json({ status: 200, community });
@@ -214,12 +214,15 @@ router.post("/register", async (req, res) => {
     } = req.body;
     const vendorJson = {
       vendorId: count + 1,
-      shopName,
+      // shopName,
       owner: {
         name: `${firstName} ${lastName}`,
         email,
         phone,
         password: hashSync(password, HASH_SALT_ROUND),
+      },
+      business: {
+        name: shopName
       },
       subscription,
       community,

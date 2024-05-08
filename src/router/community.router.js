@@ -16,8 +16,7 @@ router.get("/", async (req, res) => {
     if (code) {
       const community = await communityModel
         .findOne({ code })
-        .select("name images shortDesc categories slug categories")
-        .populate("categories");
+        .select("name images organizer shortDesc categories slug");
       if (community) {
         return res.json({ status: 200, community });
       } else {
@@ -33,6 +32,7 @@ router.get("/", async (req, res) => {
             name: 1,
             code: 1,
             shortDesc: 1,
+            organizer: 1,
             announcement: 1,
             images: 1,
             events: 1,
@@ -57,31 +57,6 @@ router.get("/", async (req, res) => {
 
     res.send(
       await communityModel.aggregate([
-        // ...(req.query.category
-        //   ? [
-        //       { $unwind: "$categories" },
-        //       {
-        //         $group: {
-        //           _id: { _id: "$_id" },
-        //           name: "$name",
-        //           slug: "$slug",
-        //           shortDesc: "$shortDesc",
-        //           images: "$images",
-        //           categories: { $push: "$categories" },
-        //           count: {
-        //             $sum: {
-        //               $cond: [
-        //                 { $eq: ["$categories", req.query.category] },
-        //                 1,
-        //                 0,
-        //               ],
-        //             },
-        //           },
-        //         },
-        //       },
-        //       { $match: { count: { $gt: 0 } } },
-        //     ]
-        //   : []),
         {
           $match: (() => {
             let obj = {};
@@ -109,9 +84,11 @@ router.get("/", async (req, res) => {
           $project: {
             name: 1,
             slug: 1,
+            organizer: 1,
             shortDesc: 1,
             images: 1,
             categories: 1,
+            signup_at: 1
           },
         },
         {
@@ -125,11 +102,13 @@ router.get("/", async (req, res) => {
         {
           $project: {
             name: 1,
+            organizer: 1,
             slug: 1,
             shortDesc: 1,
             images: 1,
             "vendors._id": 1,
             categories: 1,
+            signup_at: 1
           },
         },
       ])
@@ -207,7 +186,12 @@ router.post("/login", async (req, res) => {
 
   const { email, password } = req.body;
   const currentUser = await communityModel
-    .findOne({ email })
+    .findOne({
+      $or: [
+        { phone: email },
+        { email }
+      ]
+    })
     .select("password name code slug images shortDesc longDesc announcement");
   if (!currentUser) {
     return res.json({ status: 400 });

@@ -25,7 +25,7 @@ router.get("/public", async (req, res) => {
   const filter = {
     $or: [
       { name: { $regex: search || "", $options: "i" } },
-      { "vendor.shopName": { $regex: search || "", $options: "i" } },
+      { "vendor.business.name": { $regex: search || "", $options: "i" } },
     ],
   };
   if (community) filter["vendor.community"] = new ObjectId(community);
@@ -130,7 +130,7 @@ router.get("/public", async (req, res) => {
               _id: "$_id",
               category: "$category",
               name: "$name",
-              shopName: "$vendor.shopName",
+              shopName: "$vendor.business.name",
               price: "$inventory.price",
               image: "$inventory.image",
               tags: "$tags",
@@ -334,7 +334,7 @@ router.get(
             },
             vendor: {
               _id: 1,
-              shopName: 1,
+              shopName: '$business.name'
             },
             community: {
               _id: 1,

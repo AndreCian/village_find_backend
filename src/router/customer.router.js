@@ -9,16 +9,17 @@ import { SECRET_KEY } from "../config";
 const router = Router();
 
 router.get("/", async (req, res) => {
+  const { name, status, from, to } = req.query;
   try {
     res.send(
       await customerModel.find(
         (() => {
           let obj = {};
-          if (req.query.name) obj.name = new RegExp(req.query.name, "g");
-          if (req.query.status) obj.status = req.query.status;
+          if (name) obj.name = new RegExp(name, "g");
+          if (status) obj.status = status;
           obj.signup_at = {};
-          if (req.query.from) obj.signup_at.$gte = req.query.from;
-          if (req.query.to) obj.signup_at.$lte = req.query.to;
+          if (from) obj.signup_at.$gte = from;
+          if (to) obj.signup_at.$lte = to;
 
           if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
 

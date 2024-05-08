@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 
 const vendorSchema = new Schema({
   vendorId: Number,
-  shopName: String,
   community: {
     type: Types.ObjectId,
     ref: "community",
