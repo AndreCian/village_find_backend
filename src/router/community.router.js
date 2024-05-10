@@ -1,5 +1,6 @@
 import { Router } from "express";
-import bcrypt from "bcrypt";
+import mongoose from "mongoose";
+import bcrypt, { genSaltSync, hashSync } from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import communityModel from "../model/community.model";
@@ -7,8 +8,10 @@ import communityMiddleware from "../middleware/community.middleware";
 import multer from "../multer";
 
 import { HASH_SALT_ROUND, SECRET_KEY } from "../config";
+import vendorModel from "../model/vendor.model";
 
 const router = Router();
+const ObjectID = mongoose.Types.ObjectId;
 
 router.get("/", async (req, res) => {
   try {
@@ -88,7 +91,8 @@ router.get("/", async (req, res) => {
             shortDesc: 1,
             images: 1,
             categories: 1,
-            signup_at: 1
+            signup_at: 1,
+            status: 1
           },
         },
         {
@@ -108,7 +112,8 @@ router.get("/", async (req, res) => {
             images: 1,
             "vendors._id": 1,
             categories: 1,
-            signup_at: 1
+            signup_at: 1,
+            status: 1
           },
         },
       ])
@@ -118,6 +123,50 @@ router.get("/", async (req, res) => {
     return res.json({ status: 500 });
   }
 });
+router.get('/admin', async (req, res) => {
+  const { name, sort, status, from, to } = req.query;
+  const filterParams = {}, sortParams = {};
+  if (name) {
+    filterParams.$or = [
+      {
+        $expr: {
+          $regexMatch: {
+            input: { $concat: ["$organizer.firstName", " ", "$organizer.lastName"] },
+            regex: name,
+            options: "i"
+          }
+        }
+      },
+      { name: { $regex: name, $options: "i" } }
+    ];
+  }
+  if (status) filterParams.status = status;
+  if (from || to) {
+    filterParams.signup_at = {};
+    if (from) filterParams.signup_at.$gte = from;
+    if (to) filterParams.signup_at.$lte = to;
+  }
+
+  if (sort) {
+    if (sort === 'alphabeta') sortParams.name = 1;
+    else if (sort === 'recent') sortParams.signup_at = -1;
+    // else if (sort === 'highest')
+    // else if (sort === 'lowest')
+  }
+
+  res.send(await communityModel.aggregate([
+    { $match: filterParams },
+    ...Object.keys(sortParams).length === 0 ? [] : [{ $sort: sortParams }],
+    {
+      $lookup: {
+        from: 'vendors',
+        localField: '_id',
+        foreignField: 'community',
+        as: 'vendors',
+      }
+    }
+  ]));
+})
 router.get("/event", communityMiddleware, async (req, res) => {
   const community = req.community;
   const events = await communityModel.aggregate([
@@ -157,7 +206,33 @@ router.get("/event/:id", communityMiddleware, async (req, res) => {
   return res.json({ status: 200, event: currentEvent });
 });
 router.get("/:id", async (req, res) => {
-  res.send(await communityModel.findById(req.params.id));
+  const { id } = req.params;
+  const communities = await communityModel.aggregate([
+    { $match: { _id: new ObjectID(id) } },
+    {
+      $lookup: {
+        from: 'vendors',
+        localField: '_id',
+        foreignField: 'community',
+        as: 'vendors'
+      }
+    },
+    {
+      $project: {
+        name: 1,
+        email: 1,
+        password: 1,
+        code: 1,
+        organizer: 1,
+        vendors: 1
+      }
+    }
+  ]);
+  if (communities.length > 0) {
+    res.send({ status: 200, community: communities[0] });
+  } else {
+    res.send({ status: 400 });
+  }
 });
 
 router.post("/login", async (req, res) => {
@@ -198,6 +273,7 @@ router.post("/login", async (req, res) => {
   }
 
   const result = bcrypt.compareSync(password, currentUser.password);
+  console.log(result);
   if (result === false) {
     return res.json({ status: 404 });
   }
@@ -216,7 +292,15 @@ router.post("/login", async (req, res) => {
 });
 router.post("/register", async (req, res) => {
   const { name, email, phone, code, password } = req.body;
-  const result = await communityModel.create({
+  const result = await communityModel.findOne({
+    $or: [
+      { email }, { phone }
+    ]
+  });
+  if (result) {
+    return res.send({ status: 400 });
+  }
+  await communityModel.create({
     name,
     email,
     phone,
@@ -225,7 +309,7 @@ router.post("/register", async (req, res) => {
     status: "inactive",
     signup_at: new Date(),
   });
-  return res.json({ status: 200, result });
+  return res.json({ status: 200 });
 });
 router.post("/", async (req, res) => {
   res.send(await communityModel.create({ ...req.body, signup_at: new Date() }));
@@ -289,9 +373,20 @@ router.put("/announcement", communityMiddleware, async (req, res) => {
   });
 });
 router.put("/:id", async (req, res) => {
-  res.send(
-    await communityModel.findByIdAndUpdate(req.params.id, { ...req.body })
-  );
+  const { id } = req.params;
+  const { password, leader: leaderID, ...community } = req.body;
+  try {
+    if (password) community.password = hashSync(password, HASH_SALT_ROUND);
+    await communityModel.findByIdAndUpdate(id, community);
+    const vendors = await vendorModel.find({ community: id });
+    await Promise.all(vendors.map(async vendor => {
+      vendor.isLeader = vendor._id.toString() === leaderID;
+      return vendor.save();
+    }))
+    res.send({ status: 200 });
+  } catch (err) {
+    res.send({ status: 500 });
+  }
 });
 
 router.delete("/:id", async (req, res) => {

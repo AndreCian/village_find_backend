@@ -334,7 +334,7 @@ router.get(
             },
             vendor: {
               _id: 1,
-              shopName: '$business.name'
+              shopName: '$vendor.business.name'
             },
             community: {
               _id: 1,

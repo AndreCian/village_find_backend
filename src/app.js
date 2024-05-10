@@ -17,6 +17,7 @@ import inventoryRouter from "./router/inventory.router";
 import cartRouter from "./router/cart.router";
 import orderRouter from "./router/order.router";
 import subscRouter from './router/subscription.router';
+import commissionRouter from './router/commission.router';
 
 import homeRouter from "./router/home.router";
 import featuredRouter from "./router/featured.router";
@@ -62,6 +63,7 @@ app.use("/api/order", orderRouter);
 app.use("/api/communities/meetup", customerEventRouter);
 app.use("/api/communities", communityRouter);
 app.use('/api/subscriptions', subscRouter);
+app.use('/api/commissions', commissionRouter);
 
 app.use("/api/openai", openaiRouter);
 

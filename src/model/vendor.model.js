@@ -7,6 +7,7 @@ const vendorSchema = new Schema({
     type: Types.ObjectId,
     ref: "community",
   },
+  isLeader: Boolean,
   communityStatus: String,
   stripeAccountID: String,
   commission: Number,

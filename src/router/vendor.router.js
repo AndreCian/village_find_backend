@@ -17,21 +17,6 @@ import {
 const router = Router();
 
 router.get("/", async (req, res) => {
-  // const { communityId, vendorId } = req.query;
-  // if (communityId) {
-  //   return res.send(
-  //     await vendorModel.find({ communityId: req.query.communityId })
-  //   );
-  // } else if (vendorId) {
-  //   const vendor = await vendorModel
-  //     .findById(vendorId)
-  //     .select("shopName store images community")
-  //     .populate("community");
-  //   if (!vendor) {
-  //     return res.json({ status: 404 });
-  //   }
-  //   return res.json({ status: 200, vendor });
-  // }
   try {
     res.send(
       await vendorModel
@@ -101,6 +86,34 @@ router.get("/rewards", vendorMiddleware, async (req, res) => {
     return res.json({ status: 500 });
   }
 });
+
+router.get('/global', async (req, res) => {
+  const { vendor } = req.query;
+  try {
+    const vendors = await vendorModel.aggregate([
+      {
+        $match: {
+          $or: [
+            { 'business.name': new RegExp(vendor, 'i') },
+            { 'owner.email': new RegExp(vendor, 'i') },
+            { 'owner.phone': new RegExp(vendor, 'i') }
+          ]
+        }
+      },
+      {
+        $project: {
+          name: '$business.name',
+          email: '$owner.email',
+          phone: '$owner.phone'
+        }
+      }
+    ]);
+    res.send(vendors);
+  } catch (err) {
+    console.log(err);
+    res.send({ status: 500 });
+  }
+})
 
 router.get("/profile/:category?", vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
