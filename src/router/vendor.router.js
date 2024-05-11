@@ -43,6 +43,44 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get('/admin', async (req, res) => {
+  const { name, sort, status, from, to } = req.query;
+  const filterParams = {}, sortParams = {};
+  if (name) {
+    filterParams.$or = [
+      { 'business.name': new RegExp(name, 'i') },
+      { 'business.name': new RegExp(name, 'i') }
+    ]
+  }
+  if (status) filterParams.status = status;
+  if (from || to) {
+    filterParams.signupAt = {};
+    if (from) filterParams.signupAt.$gte = from;
+    if (to) filterParams.signupAt.$lte = to;
+  }
+
+  if (sort) {
+    if (sort === 'alphabeta') {
+      sortParams['business.name'] = 1;
+      sortParams['business.owner'] = 1;
+    }
+    else if (sort === 'recent') sortParams.signupAt = -1;
+    // else if (sort === 'highest')
+    // else if (sort === 'lowest')
+  }
+
+  res.send(await vendorModel.aggregate([
+    { $match: filterParams },
+    ...Object.keys(sortParams).length === 0 ? [] : [{ $sort: sortParams }]
+  ]));
+})
+
+router.get('/admin/:id', async (req, res) => {
+  const { id } = req.params;
+  const vendor = await vendorModel.findById(id).populate(['community', 'subscription']);
+  res.send({ status: 200, vendor });
+})
+
 router.get("/auth", vendorMiddleware, async (req, res) => {
   try {
     const vendor = req.vendor;
@@ -95,16 +133,17 @@ router.get('/global', async (req, res) => {
         $match: {
           $or: [
             { 'business.name': new RegExp(vendor, 'i') },
-            { 'owner.email': new RegExp(vendor, 'i') },
-            { 'owner.phone': new RegExp(vendor, 'i') }
+            { 'business.email': new RegExp(vendor, 'i') },
+            { 'business.phone': new RegExp(vendor, 'i') }
           ]
         }
       },
       {
         $project: {
           name: '$business.name',
-          email: '$owner.email',
-          phone: '$owner.phone'
+          owner: '$business.owner',
+          email: '$business.email',
+          phone: '$business.phone'
         }
       }
     ]);
@@ -227,19 +266,16 @@ router.post("/register", async (req, res) => {
     } = req.body;
     const vendorJson = {
       vendorId: count + 1,
-      // shopName,
-      owner: {
-        name: `${firstName} ${lastName}`,
+      business: {
+        name: shopName,
+        owner: `${firstName} ${lastName}`,
         email,
         phone,
-        password: hashSync(password, HASH_SALT_ROUND),
-      },
-      business: {
-        name: shopName
+        password: hashSync(password, HASH_SALT_ROUND)
       },
       subscription,
       community,
-      status: "Inactive",
+      status: "inactive",
       signupAt: new Date(),
     };
 
@@ -275,7 +311,7 @@ router.post("/login", async (req, res) => {
       }
       return res.json({
         status: 200,
-        profile: { fullName: currentUser.owner.name },
+        profile: { fullName: currentUser.business.name },
       });
     } catch (err) {
       return res.json({ status: 401 });
@@ -287,17 +323,17 @@ router.post("/login", async (req, res) => {
     const vendor = await vendorModel.findOne({
       $or: [
         {
-          "owner.email": email
+          "business.email": email
         },
         {
-          "owner.phone": email
+          "business.phone": email
         }
       ]
     });
     if (!vendor) {
       return res.json({ status: 404 });
     }
-    if (!compareSync(password, vendor?.owner.password)) {
+    if (!compareSync(password, vendor.business?.password || '')) {
       return res.json({ status: 400 });
     }
 
@@ -307,7 +343,7 @@ router.post("/login", async (req, res) => {
     return res.json({
       status: 200,
       token,
-      profile: { fullName: vendor.owner.name },
+      profile: { fullName: vendor.business.name },
     });
   } catch (error) {
     console.log(error);
@@ -343,8 +379,8 @@ router.put(
           return res.json({ status: 500 });
         });
     } else if (id === "update-password") {
-      if (!vendor.owner) vendor.owner = {};
-      vendor.owner.password = hashSync(req.body.password, HASH_SALT_ROUND);
+      if (!vendor.business) vendor.business = {};
+      vendor.business.password = hashSync(req.body.password, HASH_SALT_ROUND);
       vendor
         .save()
         .then(() => {
@@ -484,14 +520,17 @@ router.put("/rewards", vendorMiddleware, async (req, res) => {
   }
 });
 
-// router.put("/:id", async (req, res) => {
-//   let data = await vendorModel.findById(req.params.id);
-//   data = {
-//     ...data,
-//     ...req.body,
-//   };
-//   res.send(await vendorModel.findByIdAndUpdate(req.params.id, data));
-// });
+router.put("/:id", async (req, res) => {
+  const { id } = req.params;
+  const vendor = req.body;
+  try {
+    await vendorModel.findByIdAndUpdate(id, vendor);
+    res.send({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    res.send({ status: 500 });
+  }
+});
 
 router.delete(
   "/profile/shipping/parcel/:id",

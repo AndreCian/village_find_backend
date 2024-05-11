@@ -32,6 +32,10 @@ const customerSchema = new Schema({
   signup_at: {
     type: Date,
   },
-});
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+customerSchema.virtual('fullName').get(function () {
+  return `${this.firstName} ${this.lastName}`;
+})
 
 export default model("customer", customerSchema);

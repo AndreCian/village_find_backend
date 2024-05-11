@@ -5,7 +5,7 @@ export const cartSchema = new Schema({
   orderId: Number,
   orderLogoPath: String,
   stripeCustomerID: String,
-  sessionId: { type: ObjectId },
+  guestId: String,
   customerId: { type: ObjectId, ref: "customer" },
   inventoryId: { type: ObjectId, ref: "inventory" },
   vendorId: { type: ObjectId, ref: "vendor" },

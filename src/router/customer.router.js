@@ -3,32 +3,76 @@ import { hash, compare } from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import customerModel from "../model/customer.model";
-import { createCustomer } from "../utils/stripe";
 import { SECRET_KEY } from "../config";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const { name, status, from, to } = req.query;
+  const { name, status, sort, from, to } = req.query;
+
+  let filterParams = {}, sortParams = {};
+  if (name) {
+    filterParams.$or = [
+      { fullName: { $regex: name, $options: 'i' } },
+      { email: { $regex: name, $options: 'i' } },
+      { phone: { $regex: name, $options: 'i' } }
+    ]
+  }
+  if (status) filterParams.status = status;
+  filterParams.signup_at = {};
+  if (from) filterParams.signup_at.$gte = from;
+  if (to) filterParams.signup_at.$lte = to;
+  if (JSON.stringify(filterParams.signup_at) == "{}") delete filterParams.signup_at;
+
+  if (sort) {
+    if (sort === 'alphabeta') sortParams.firstName = -1;
+    else if (sort === 'recent') sortParams.signup_at = 1;
+  }
+
   try {
-    res.send(
-      await customerModel.find(
-        (() => {
-          let obj = {};
-          if (name) obj.name = new RegExp(name, "g");
-          if (status) obj.status = status;
-          obj.signup_at = {};
-          if (from) obj.signup_at.$gte = from;
-          if (to) obj.signup_at.$lte = to;
-
-          if (JSON.stringify(obj.signup_at) == "{}") delete obj.signup_at;
-
-          return obj;
-        })()
-      )
-    );
+    const customers = await customerModel.find(filterParams).sort(sortParams)
+    res.send(customers);
   } catch (err) {
     console.log(err);
+  }
+});
+
+router.get("/admin", async (req, res) => {
+  const { name, status, sort, from, to } = req.query;
+
+  let filterParams = {}, sortParams = {};
+  if (name) {
+    filterParams.$or = [
+      {
+        $expr: {
+          $regexMatch: {
+            input: { $concat: ["$firstName", " ", "$lastName"] },
+            regex: name,
+            options: "i"
+          }
+        }
+      },
+      { email: { $regex: name, $options: 'i' } },
+      { phone: { $regex: name, $options: 'i' } }
+    ]
+  }
+  if (status) filterParams.status = status;
+  filterParams.signup_at = {};
+  if (from) filterParams.signup_at.$gte = from;
+  if (to) filterParams.signup_at.$lte = to;
+  if (JSON.stringify(filterParams.signup_at) == "{}") delete filterParams.signup_at;
+
+  if (sort) {
+    if (sort === 'alphabeta') sortParams.firstName = 1;
+    else if (sort === 'recent') sortParams.signup_at = -1;
+  }
+
+  try {
+    const customers = await customerModel.find(filterParams).sort(sortParams)
+    res.send(customers);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send('Internel error!');
   }
 });
 
@@ -111,13 +155,26 @@ router.post("/register", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
-  // let data = await customerModel.findOne({ _id: req.params.id });
-  // data = {
-  //   ...data,
-  //   ...req.body,
-  // };
-  // console.log("----------------data--------------", data);
-  res.send(await customerModel.findByIdAndUpdate(req.params.id, req.body));
+  const { id } = req.params;
+  const customer = req.body;
+  try {
+    await customerModel.findByIdAndUpdate(id, customer);
+    res.send({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    res.send({ status: 500 });
+  }
 });
+
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await customerModel.findByIdAndDelete(id);
+    res.send({ status: 200 });
+  } catch (err) {
+    console.log(err);
+    res.send({ status: 500 });
+  }
+})
 
 export default router;

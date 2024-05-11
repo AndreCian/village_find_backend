@@ -5,10 +5,15 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   const { name, status } = req.query;
-  const filter = {};
-  if (name) filter.name = new RegExp(name, 'g');
-  if (status) filter.status = status;
-  res.send(await couponModel.find(filter));
+  const filterParams = {};
+  if (name) {
+    filterParams.$or = [
+      { name: { $regex: name, $options: 'i' } },
+      { type: { $regex: name, $options: 'i' } }
+    ];
+  }
+  if (status) filterParams.status = status;
+  res.send(await couponModel.find(filterParams));
 });
 
 router.get("/:id", async (req, res) => {

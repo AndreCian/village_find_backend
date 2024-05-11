@@ -13,12 +13,9 @@ const vendorSchema = new Schema({
   commission: Number,
   monthlyFee: Number,
   address: String,
-  subscription: Object,
-  owner: {
-    name: String,
-    email: String,
-    phone: String,
-    password: String,
+  subscription: {
+    type: Types.ObjectId,
+    ref: 'subscription'
   },
   business: {
     name: String,
@@ -27,6 +24,7 @@ const vendorSchema = new Schema({
     phone: String,
     address: String,
     zipcode: String,
+    password: String,
   },
   socialUrls: {
     facebook: String,

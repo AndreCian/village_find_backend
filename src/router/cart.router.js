@@ -1,7 +1,6 @@
 import express from "express";
 
 import cartModel from "../model/cart.model";
-import orderModel from "../model/order.model";
 import customerMiddleware from "../middleware/customer.middleware";
 
 const router = express.Router();
