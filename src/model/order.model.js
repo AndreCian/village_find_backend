@@ -7,23 +7,24 @@ const OrderSchema = new Schema({
     type: ObjectId,
     ref: "vendor",
   },
-  customerName: String,
+  customerID: {
+    type: ObjectId,
+    ref: 'customer'
+  },
   deliveryType: String,
   deliveryInfo: {
-    orderDate: Date,
     classification: String,
     address: String,
     instruction: String,
     isSubstitute: Boolean,
   },
   gift: {
-    recipient: String,
+    name: String,
     email: String,
     phone: String,
     message: String,
   },
   customer: {
-    name: String,
     email: String,
     phone: String,
     address: String,
@@ -50,8 +51,10 @@ const OrderSchema = new Schema({
     price: Number,
     quantity: Number,
     discount: Number,
+    subtotal: Number
   },
   status: String,
+  orderDate: Date,
 });
 
 export default mongoose.model("order", OrderSchema);

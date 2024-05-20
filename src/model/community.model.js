@@ -1,5 +1,4 @@
 import { Schema, model, default as mongoose } from "mongoose";
-const ObjectId = mongoose.Types.ObjectId;
 
 const schema = new Schema({
   name: {

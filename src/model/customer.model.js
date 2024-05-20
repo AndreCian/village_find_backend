@@ -1,37 +1,27 @@
 import { Schema, model } from "mongoose";
 
 const customerSchema = new Schema({
-  stripeCustomerID: {
-    type: String,
-  },
-  firstName: {
-    type: String,
-  },
-  lastName: {
-    type: String,
-  },
-  phone: {
-    type: String,
-  },
+  stripeCustomerID: String,
+  firstName: String,
+  lastName: String,
+  phone: String,
   email: {
     type: String,
     unique: true,
   },
-  address: {
-    type: String,
-  },
-  zipcode: {
-    type: String,
-  },
-  password: {
-    type: String,
-  },
-  status: {
-    type: String,
-  },
-  signup_at: {
-    type: Date,
-  },
+  address: String,
+  addressBook: [
+    {
+      name: String,
+      address: String,
+      extras: String,
+      default: Boolean
+    }
+  ],
+  zipcode: String,
+  password: String,
+  status: String,
+  signup_at: Date,
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 customerSchema.virtual('fullName').get(function () {

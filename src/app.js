@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import "dotenv/config";
 
+import adminRouter from './router/admin.router';
 import customerRouter from "./router/customer.router";
 import homepageRouter from "./router/homepage.router";
 import footerRouter from "./router/footer.router";
@@ -53,6 +54,7 @@ app.use("/api/settings/general/metric", metricRouter);
 app.use("/api/settings/general/category", categoryRouter);
 app.use("/api/settings/general/support", supportRouter);
 
+app.use('/api/admin', adminRouter);
 app.use("/api/coupons", couponRouter);
 app.use("/api/products", productRouter);
 app.use("/api/styles", styleRouter);

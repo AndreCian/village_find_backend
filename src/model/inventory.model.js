@@ -12,7 +12,7 @@ const InventorySchema = new Schema({
     type: ObjectId,
     ref: "product",
   },
-  attrs: Object,
+  attrs: [String],
   price: Number,
   quantity: Number,
   image: String,

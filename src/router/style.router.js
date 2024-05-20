@@ -3,9 +3,7 @@ import express from "express";
 import inventoryModel from "../model/inventory.model";
 import styleModel from "../model/style.model";
 
-import customerMiddleware from "../middleware/customer.middleware";
 import vendorMiddleware from "../middleware/vendor.middleware";
-import vendorModel from "../model/vendor.model";
 import productModel from "../model/product.model";
 
 const router = express.Router();

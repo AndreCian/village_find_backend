@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import customerModel from "../model/customer.model";
 import { SECRET_KEY } from "../config";
 
-export default async (req, res, next) => {
+const customerMiddleware = async (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization) {
     return res.json({ status: 401 });
@@ -26,3 +26,5 @@ export default async (req, res, next) => {
     return res.json({ status: 401 });
   }
 };
+
+export default customerMiddleware;

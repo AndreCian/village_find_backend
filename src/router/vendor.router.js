@@ -49,7 +49,7 @@ router.get('/admin', async (req, res) => {
   if (name) {
     filterParams.$or = [
       { 'business.name': new RegExp(name, 'i') },
-      { 'business.name': new RegExp(name, 'i') }
+      { 'business.owner': new RegExp(name, 'i') }
     ]
   }
   if (status) filterParams.status = status;
@@ -311,7 +311,7 @@ router.post("/login", async (req, res) => {
       }
       return res.json({
         status: 200,
-        profile: { fullName: currentUser.business.name },
+        profile: { owner: currentUser.business.owner },
       });
     } catch (err) {
       return res.json({ status: 401 });
@@ -450,17 +450,19 @@ router.put(
     const vendor = req.vendor;
     const fulfillment = vendor.fulfillment;
     if (method === "pickup") {
-      const { leadTime, pickupDays } = req.body;
+      const { leadTime, pickupFee, pickupDays } = req.body;
       fulfillment.pickup = {
         leadTime,
+        pickupFee,
         days: pickupDays,
       };
       await vendor.save();
       return res.json({ status: 200 });
     } else if (method === "delivery") {
-      const { leadTime, deliveryDays } = req.body;
+      const { leadTime, deliveryFee, deliveryDays } = req.body;
       fulfillment.delivery = {
         leadTime,
+        deliveryFee,
         days: deliveryDays,
       };
       await vendor.save();

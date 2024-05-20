@@ -49,6 +49,7 @@ const vendorSchema = new Schema({
   fulfillment: {
     pickup: {
       leadTime: Number,
+      pickupFee: Number,
       days: [
         {
           weekday: Number,
@@ -59,6 +60,7 @@ const vendorSchema = new Schema({
     },
     delivery: {
       leadTime: Number,
+      deliveryFee: Number,
       days: [
         {
           weekday: Number,

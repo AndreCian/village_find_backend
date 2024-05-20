@@ -3,36 +3,53 @@ import { Schema, default as mongoose } from "mongoose";
 const ObjectId = mongoose.Types.ObjectId;
 export const cartSchema = new Schema({
   orderId: Number,
-  orderLogoPath: String,
   stripeCustomerID: String,
   guestId: String,
   customerId: { type: ObjectId, ref: "customer" },
-  inventoryId: { type: ObjectId, ref: "inventory" },
+  productId: { type: ObjectId, ref: 'product' },
   vendorId: { type: ObjectId, ref: "vendor" },
+  name: String,
   price: Number,
   quantity: Number,
   discount: Number,
+  image: String,
+  attributes: [
+    {
+      name: String,
+      value: String
+    }
+  ],
   deliveryType: String,
   personalization: {
     fee: Number,
     message: String,
   },
+  buymode: String,
   subscription: {
-    issubscribed: Boolean,
     iscsa: Boolean,
-    frequency: {
-      unit: String,
-      interval: Number,
-    },
+    subscribe: String,
+    frequencies: [String],
     discount: Number,
-    duration: Number,
-    startDate: Date,
-    endDate: Date,
+    csa: {
+      duration: Number,
+      frequency: String,
+      startDate: Date,
+      endDate: Date,
+    }
   },
   pickuplocation: {
     name: String,
     address: String,
     charge: Number,
+  },
+  delivery: {
+    street: String,
+    city: String,
+    state: String,
+    country: String,
+    extra: String,
+    zipcode: Number,
+    instruction: String,
   },
   fulfillday: {
     day: Date,
@@ -45,21 +62,6 @@ export const cartSchema = new Schema({
     delivery: Object,
   },
   status: String,
-  shipping: {
-    fullName: String,
-    phone: String,
-    email: String,
-  },
-  delivery: {
-    street: String,
-    city: String,
-    state: String,
-    country: String,
-    extra: String,
-    zipcode: Number,
-    instruction: String,
-  },
-  donation: Number,
 });
 
 export default mongoose.model("cart", cartSchema);

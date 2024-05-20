@@ -2,6 +2,8 @@ import { Router } from "express";
 import * as mongoose from "mongoose";
 
 import productModel from "../model/product.model";
+import styleModel from '../model/style.model';
+import inventoryModel from '../model/inventory.model';
 
 import vendorMiddleware from "../middleware/vendor.middleware";
 import uploadMiddleware from "../multer";
@@ -31,21 +33,21 @@ router.get("/public", async (req, res) => {
   if (community) filter["vendor.community"] = new ObjectId(community);
   if (vendor) filter["vendor._id"] = new ObjectId(vendor);
   if (category) filter.category = category;
-  if (minPrice) filter["inventories.price"] = { $gte: Number(minPrice) };
-  if (maxPrice) filter["inventories.price"] = { $lte: Number(maxPrice) };
+  if (minPrice) filter.price = { $gte: Number(minPrice) };
+  if (maxPrice) filter.price = { $lte: Number(maxPrice) };
 
   const products = await productModel.aggregate([
     ...(type === "subscription"
       ? [{ $match: { subscription: { $exists: true, $ne: null } } }]
       : []),
-    {
-      $lookup: {
-        from: "inventories",
-        localField: "_id",
-        foreignField: "productId",
-        as: "inventories",
-      },
-    },
+    // {
+    //   $lookup: {
+    //     from: "inventories",
+    //     localField: "_id",
+    //     foreignField: "productId",
+    //     as: "inventories",
+    //   },
+    // },
     {
       $lookup: {
         from: "vendors",
@@ -65,24 +67,24 @@ router.get("/public", async (req, res) => {
         }
         : { createdAt: 1 },
     },
-    {
-      $addFields: {
-        inventory: {
-          $first: {
-            $filter: {
-              input: "$inventories",
-              as: "inventory",
-              cond: {
-                $ne: ["$$inventory.image", null],
-              },
-            },
-          },
-        },
-        vendor: {
-          $first: "$vendor",
-        },
-      },
-    },
+    // {
+    //   $addFields: {
+    //     inventory: {
+    //       $first: {
+    //         $filter: {
+    //           input: "$inventories",
+    //           as: "inventory",
+    //           cond: {
+    //             $ne: ["$$inventory.image", null],
+    //           },
+    //         },
+    //       },
+    //     },
+    //     vendor: {
+    //       $first: "$vendor",
+    //     },
+    //   },
+    // },
     {
       $addFields: {
         tags: {
@@ -131,8 +133,8 @@ router.get("/public", async (req, res) => {
               category: "$category",
               name: "$name",
               shopName: "$vendor.business.name",
-              price: "$inventory.price",
-              image: "$inventory.image",
+              price: "$price",
+              image: "$image",
               tags: "$tags",
             },
           ],
@@ -194,32 +196,33 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
             },
           },
         },
+        image: 1,
         createdAt: 1,
       },
     },
-    {
-      $lookup: {
-        from: "inventories",
-        localField: "_id",
-        foreignField: "productId",
-        as: "inventories",
-      },
-    },
-    {
-      $addFields: {
-        inventory: {
-          $first: {
-            $filter: {
-              input: "$inventories",
-              as: "inventory",
-              cond: {
-                $ne: ["$$inventory.image", null],
-              },
-            },
-          },
-        },
-      },
-    },
+    // {
+    //   $lookup: {
+    //     from: "inventories",
+    //     localField: "_id",
+    //     foreignField: "productId",
+    //     as: "inventories",
+    //   },
+    // },
+    // {
+    //   $addFields: {
+    //     inventory: {
+    //       $first: {
+    //         $filter: {
+    //           input: "$inventories",
+    //           as: "inventory",
+    //           cond: {
+    //             $ne: ["$$inventory.image", null],
+    //           },
+    //         },
+    //       },
+    //     },
+    //   },
+    // },
     {
       $replaceRoot: {
         newRoot: {
@@ -236,7 +239,7 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
               _id: "$_id",
               name: "$name",
               status: "$status",
-              image: "$inventory.image",
+              image: '$image',
               sku: "$specification.value",
               createdAt: "$createdAt",
             },
@@ -260,6 +263,16 @@ router.get("/vendor/:id", vendorMiddleware, async (req, res) => {
     return res.json({ status: 404 });
   }
 });
+
+router.get('/vendor/:id/style', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const product = await productModel.findById(id).populate('stylesOrder');
+    return res.send(product.stylesOrder);
+  } catch (err) {
+    console.log(err);
+  }
+})
 
 router.get(
   "/customer/:id",
@@ -291,10 +304,18 @@ router.get(
         {
           $lookup: {
             from: "styles",
-            localField: "_id",
-            foreignField: "productId",
+            localField: "stylesOrder",
+            foreignField: "_id",
             as: "styles",
           },
+        },
+        {
+          $lookup: {
+            from: 'inventories',
+            localField: '_id',
+            foreignField: 'productId',
+            as: 'inventories'
+          }
         },
         {
           $unwind: "$vendor",
@@ -302,30 +323,32 @@ router.get(
         {
           $unwind: "$community",
         },
-        {
-          $addFields: {
-            inventories: {
-              $reduce: {
-                input: "$styles",
-                initialValue: [],
-                in: {
-                  $concatArrays: ["$$value", "$$this.inventories"],
-                },
-              },
-            },
-          },
-        },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "inventories",
-            foreignField: "_id",
-            as: "inventories",
-          },
-        },
+        // {
+        //   $addFields: {
+        //     inventories: {
+        //       $reduce: {
+        //         input: "$styles",
+        //         initialValue: [],
+        //         in: {
+        //           $concatArrays: ["$$value", "$$this.inventories"],
+        //         },
+        //       },
+        //     },
+        //   },
+        // },
+        // {
+        //   $lookup: {
+        //     from: "inventories",
+        //     localField: "inventories",
+        //     foreignField: "_id",
+        //     as: "inventories",
+        //   },
+        // },
         {
           $project: {
-            name: "$name",
+            name: 1,
+            price: 1,
+            image: 1,
             more: {
               shortDesc: "$shortDesc",
               longDesc: "$longDesc",
@@ -362,7 +385,10 @@ router.get(
                 {
                   more: "$more",
                   order: {
+                    _id: '$_id',
                     name: "$name",
+                    price: '$price',
+                    image: '$image',
                     vendor: "$vendor",
                     community: "$community",
                     styles: "$styles",
@@ -378,10 +404,12 @@ router.get(
           },
         },
       ]);
+
       if (products.length === 1) {
         return res.json({ status: 200, product: products[0] });
       }
       return res.json({ status: 404 });
+
     } catch (err) {
       console.log(err);
       return res.json({ status: 500 });
@@ -411,6 +439,7 @@ router.get("/:id/:category", vendorMiddleware, async (req, res) => {
     } else if (category === "customization") {
       return res.json({
         status: 200,
+        iscustomizable: product.iscustomizable,
         customization: product.customization || {},
       });
     } else if (category === "subscription") {
@@ -425,23 +454,37 @@ router.get("/:id/:category", vendorMiddleware, async (req, res) => {
 router.post(
   "/",
   vendorMiddleware,
-  uploadMiddleware.single("nutrition"),
+  // uploadMiddleware.fields([{ name: 'image' }, { name: 'nutrition' }]),
   async (req, res) => {
     const vendor = req.vendor;
     const reqJson = req.body;
+    // const image = req.files.image || req.files.image[0] || null;
+    // const nutrition = req.files.nutrition || req.files.nutrition[0] || null;
     try {
       const totalCount = await productModel.countDocuments();
       const product = await productModel.create({
         ...reqJson,
-        deliveryTypes: JSON.parse(reqJson.deliveryTypes),
-        vendor: vendor._id,
-        nutrition: req.file.path,
-        status: "inactive",
         id: `${totalCount + 1}`,
+        status: 'active',
+        vendor: vendor._id
       });
-      if (!vendor.isProduct) vendor.isProduct = true;
-      await vendor.save();
-      return res.json({ status: 200, product });
+      const { styles } = reqJson;
+      const styleResults = await Promise.all(styles.map(async style => {
+        const styleResult = await styleModel.create({ ...style, productId: product._id });
+        const inventResults = await Promise.all(style.inventories.map(invent =>
+          inventoryModel.create({ ...invent, productId: product._id, styleId: styleResult._id })
+        ));
+        styleResult.inventories = inventResults.map(item => item._id);
+        return styleResult.save();
+      }
+      ));
+      product.stylesOrder = styleResults.map(item => item._id);
+      await product.save();
+      if (!vendor.isProduct) {
+        vendor.isProduct = true;
+        await vendor.save();
+      }
+      return res.json({ status: 200, product: product._id });
     } catch (err) {
       return res.json({ status: 500 });
     }
@@ -481,7 +524,7 @@ router.post("/:id/:category", vendorMiddleware, async (req, res) => {
 router.put(
   "/:id",
   vendorMiddleware,
-  uploadMiddleware.single("nutrition"),
+  uploadMiddleware.fields([{ name: 'nutrition' }, { name: 'image' }]),
   async (req, res) => {
     const { id } = req.params;
     const {
@@ -495,7 +538,8 @@ router.put(
       soldByUnit,
       tax,
     } = req.body;
-    console.log(deliveryTypes);
+    const image = (req.files && req.files.image && req.files.image[0]) || null;
+    const nutrition = (req.files && req.files.nutrition && req.files.nutrition[0]) || null;
 
     try {
       const product = await productModel.findById(id);
@@ -507,7 +551,8 @@ router.put(
       if (disclaimer) product.disclaimer = disclaimer;
       if (soldByUnit) product.soldByUnit = soldByUnit;
       if (tax) product.tax = tax;
-      if (req.file) product.nutrition = req.file.path;
+      if (nutrition) product.nutrition = nutrition.path;
+      if (image) product.image = image.path;
       if (!!status) product.status = status;
       await product.save();
       return res.json({ status: 200 });

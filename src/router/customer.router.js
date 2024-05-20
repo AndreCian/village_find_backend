@@ -3,6 +3,7 @@ import { hash, compare } from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import customerModel from "../model/customer.model";
+import customerMiddleware from '../middleware/customer.middleware';
 import { SECRET_KEY } from "../config";
 
 const router = Router();
@@ -76,6 +77,11 @@ router.get("/admin", async (req, res) => {
   }
 });
 
+router.get('/address', customerMiddleware, async (req, res) => {
+  const customer = req.customer;
+  res.send(customer.addressBook);
+});
+
 router.get("/:id", async (req, res) => {
   res.send(await customerModel.findById(req.params.id));
 });
@@ -92,7 +98,7 @@ router.post("/login", async (req, res) => {
       }
       const currentUser = await customerModel
         .findById(tokenUser.id)
-        .select("firstName lastName zipcode");
+        .select("firstName lastName zipcode email phone");
       if (!currentUser) {
         return res.json({ status: 401 });
       }
@@ -110,7 +116,7 @@ router.post("/login", async (req, res) => {
           { phone: email }
         ]
       })
-      .select("firstName lastName zipcode password");
+      .select("firstName lastName zipcode email phone password");
     if (!user) {
       return res.json({ status: 404 });
     }
@@ -127,6 +133,7 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    delete user.password;
     return res.json({ status: 200, token, profile: user });
   } catch (error) {
     console.log(error);
@@ -151,6 +158,18 @@ router.post("/register", async (req, res) => {
     return res.send({ status: 200, token, profile });
   } catch (error) {
     res.send({ message: "Error", data: error.message });
+  }
+});
+
+router.put('/address', customerMiddleware, async (req, res) => {
+  const customer = req.customer;
+  const { addressBook } = req.body;
+  try {
+    if (addressBook) customer.addressBook = addressBook;
+    await customer.save();
+    res.send({ status: 200 });
+  } catch (err) {
+    console.log(err);
   }
 });
 
