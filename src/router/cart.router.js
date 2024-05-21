@@ -63,7 +63,19 @@ router.post(
     const { vendorId, productId, price, quantity, discount, image, subscription } = req.body;
     const { mode, buyerID } = req.query;
     try {
-      const saveJson = { vendorId, productId, price, quantity, image, discount, subscription, status: 'active', buymode: 'one-time' };
+      const maxOrderID = await cartModel.findOne().sort({ orderId: -1 });
+      const saveJson = {
+        orderId: maxOrderID ? maxOrderID.orderId + 1 : 1,
+        vendorId,
+        productId,
+        price,
+        quantity,
+        image,
+        discount,
+        subscription,
+        status: 'active',
+        buymode: 'one-time'
+      };
       if (mode === 'customer') {
         saveJson.customerId = buyerID;
       } else {
@@ -101,15 +113,15 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
   try {
     const count = await cartModel.countDocuments();
     await Promise.all(cartItems.map(async (item, index) => {
-      const { street, city, state, zipcode } = item.delivery || {};
-      let targetAddress = `${street} ${city}, ${state} ${zipcode}`, instruction = item.delivery.instruction || '';
-      if (item.gift) {
-        const { isHomeDelivery } = item.gift;
-        if (isHomeDelivery === false) {
-          const { street, city, state, zipcode } = item.gift.delivery;
-          targetAddress = `${street} ${city}, ${state} ${zipcode}`;
-        }
-        instruction = item.gift.delivery.instruction;
+      const { deliveryType, delivery } = item;
+      let targetAddress = '', instruction = '';
+      if (deliveryType === 'Shipping' || deliveryType === 'Home Delivery') {
+        const { street, city, state, zipcode } = item.delivery || {};
+        instruction = delivery.instruction;
+        targetAddress = `${street} ${city}, ${state} ${zipcode}`;
+      } else if (deliveryType === 'Pickup Location') {
+        instruction = item.pickuplocation.instruction;
+        targetAddress = item.pickuplocation.address;
       }
       const order = {
         orderID: count + index,
@@ -117,7 +129,6 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
         customerID: customer._id,
         deliveryType: item.deliveryType,
         deliveryInfo: {
-          orderDate: new Date(),
           classification: item.buymode === 'recurring' ? `Subscription, ${item.deliveryType}` : item.deliveryType,
           address: targetAddress,
           instruction: instruction,
@@ -129,10 +140,19 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
           price: item.price,
           quantity: item.quantity,
           discount: item.discount,
-        }
+          soldByUnit: item.productId.soldByUnit,
+          subtotal: Math.floor((item.price * item.quantity) * (100 - item.discount) / 100)
+        },
+        orderDate: new Date(),
       };
       if (item.gift) order.gift = item.gift.receiver;
       if (item.personalization) order.personalization = item.personalization.message;
+      if (item.deliveryType === 'Pickup Location') {
+        const { pickupDate, pickupTime } = item.pickuplocation;
+        order.locationInfo = {
+          ...item.pickuplocation, pickDate: pickupDate, pickTime: `${pickupTime.from} ${pickupTime.to}`
+        }
+      };
       return orderModel.create(order);
     }));
 
@@ -142,84 +162,6 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
     }))
 
     res.send({ status: 200 });
-
-    // customer.shipping = shipping;
-    // customer.delivery = delivery;
-    // customer.donation = donation;
-    // await customer.save();
-
-    // const cartItems = await cartModel
-    //   .find({ customerId: customer._id })
-    //   .populate({
-    //     path: "vendorId",
-    //   })
-    //   .populate({
-    //     path: "inventoryId",
-    //     populate: {
-    //       path: "productId",
-    //     },
-    //   });
-
-    // const subscriptions = cartItems.filter((item) => item.subscription);
-
-    // subscriptions.forEach(async (item) => {
-    //   const price = await createPrice(item);
-    //   await stripePriceModel.create({
-    //     cartID: item._id,
-    //     priceID: price.id,
-    //   });
-    // });
-
-    // const cartItems = await cartModel
-    //   .find({
-    //     customerId: customer._id,
-    //     status: "active",
-    //   })
-    //   .populate({
-    //     path: "inventoryId",
-    //     populate: [
-    //       {
-    //         path: "styleId",
-    //       },
-    //       {
-    //         path: "productId",
-    //       },
-    //     ],
-    //   });
-
-    // cartItems.forEach(async (item) => {
-    //   await orderModforEachel.create({
-    //     orderId: item.orderId,
-    //     product: {
-    //       name: item.inventoryId.productId.name,
-    //       price: item.price,
-    //       quantity: item.quantity,
-    //       discount: item.inventoryId.styleId.discount,
-    //     },
-    //     orderInfo: {
-    //       isshipping: item.deliveryType === "Shipping",
-    //       issubscription: !!item.subscription,
-    //       iscsa: !!item.subscription.iscsa,
-    //       deliveryType: item.deliveryType,
-    //       createdAt: new Date(),
-    //       instruction: delivery.instruction,
-    //       address:
-    //         item.deliveryType === "Pickup Location"
-    //           ? item.pickuplocation.address
-    //           : delivery.street,
-    //       issubstitute: false,
-    //       personalization:
-    //         (item.personalization && item.personalization.message) || "",
-    //     },
-    //     customerID: customer._id,
-    //     vendorID: item.vendorId,
-    //     giftInfo: item.gift.receiver
-    //       ? { ...item.gift.receiver, recipient: item.gift.receiver.fullName }
-    //       : null,
-    //     createdAt: new Date(),
-    //     status: "under process",
-    //   });
-    // });
   } catch (err) {
     console.log(err);
     return res.json({ status: 500 });

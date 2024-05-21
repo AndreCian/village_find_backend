@@ -18,6 +18,16 @@ const OrderSchema = new Schema({
     instruction: String,
     isSubstitute: Boolean,
   },
+  locationInfo: {
+    instruction: String,
+    name: String,
+    address: String,
+    pickDate: Date,
+    pickTime: String,
+  },
+  pickupInfo: {
+    address: String,
+  },
   gift: {
     name: String,
     email: String,
@@ -41,6 +51,7 @@ const OrderSchema = new Schema({
       fee: Number,
     },
     subscription: {
+      iscsa: Boolean,
       cycle: {
         total: Number,
         current: Number,
@@ -51,7 +62,8 @@ const OrderSchema = new Schema({
     price: Number,
     quantity: Number,
     discount: Number,
-    subtotal: Number
+    subtotal: Number,
+    soldByUnit: String
   },
   status: String,
   orderDate: Date,

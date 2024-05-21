@@ -8,7 +8,7 @@ import vendorMiddleware from "../middleware/vendor.middleware";
 const router = express.Router();
 const ObjectID = mongoose.Types.ObjectId;
 
-router.get('/', customerMiddleware, async (req, res) => {
+router.get('/customer', customerMiddleware, async (req, res) => {
   const customer = req.customer;
   try {
     const orders = await orderModel.aggregate([
@@ -24,6 +24,12 @@ router.get('/', customerMiddleware, async (req, res) => {
       {
         $addFields: {
           vendor: { $arrayElemAt: ['$vendorID', 0] },
+          orderDate: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$orderDate"
+            }
+          }
         }
       },
       {
@@ -37,6 +43,16 @@ router.get('/', customerMiddleware, async (req, res) => {
       { $project: { _id: 0, orderDate: '$_id.orderDate', orderItems: 1 } },
     ]);
     res.send(orders);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+router.get('/customer/:id', customerMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await orderModel.findById(id).populate({ path: 'vendorID' });
+    res.send(order);
   } catch (err) {
     console.log(err);
   }

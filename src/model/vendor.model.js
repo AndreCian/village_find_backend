@@ -74,8 +74,8 @@ const vendorSchema = new Schema({
         name: String,
         address: String,
         eventDate: Date,
-        pickup: {
-          weekday: Number,
+        pickupWeekday: Number,
+        pickupTime: {
           from: String,
           to: String,
         },

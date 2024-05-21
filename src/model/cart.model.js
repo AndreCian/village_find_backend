@@ -41,6 +41,12 @@ export const cartSchema = new Schema({
     name: String,
     address: String,
     charge: Number,
+    instruction: String,
+    pickupDate: Date,
+    pickupTime: {
+      from: String,
+      to: String
+    }
   },
   delivery: {
     street: String,
