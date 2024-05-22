@@ -276,7 +276,7 @@ router.get('/vendor/:id/style', async (req, res) => {
 
 router.get(
   "/customer/:id",
-  /*customerMiddleware,*/ async (req, res) => {
+  async (req, res) => {
     const { id } = req.params;
     try {
       const products = await productModel.aggregate([
@@ -323,27 +323,6 @@ router.get(
         {
           $unwind: "$community",
         },
-        // {
-        //   $addFields: {
-        //     inventories: {
-        //       $reduce: {
-        //         input: "$styles",
-        //         initialValue: [],
-        //         in: {
-        //           $concatArrays: ["$$value", "$$this.inventories"],
-        //         },
-        //       },
-        //     },
-        //   },
-        // },
-        // {
-        //   $lookup: {
-        //     from: "inventories",
-        //     localField: "inventories",
-        //     foreignField: "_id",
-        //     as: "inventories",
-        //   },
-        // },
         {
           $project: {
             name: 1,
@@ -454,12 +433,9 @@ router.get("/:id/:category", vendorMiddleware, async (req, res) => {
 router.post(
   "/",
   vendorMiddleware,
-  // uploadMiddleware.fields([{ name: 'image' }, { name: 'nutrition' }]),
   async (req, res) => {
     const vendor = req.vendor;
     const reqJson = req.body;
-    // const image = req.files.image || req.files.image[0] || null;
-    // const nutrition = req.files.nutrition || req.files.nutrition[0] || null;
     try {
       const totalCount = await productModel.countDocuments();
       const product = await productModel.create({
@@ -470,7 +446,7 @@ router.post(
       });
       const { styles } = reqJson;
       const styleResults = await Promise.all(styles.map(async style => {
-        const styleResult = await styleModel.create({ ...style, productId: product._id });
+        const styleResult = await styleModel.create({ ...style, inventories: [], productId: product._id });
         const inventResults = await Promise.all(style.inventories.map(invent =>
           inventoryModel.create({ ...invent, productId: product._id, styleId: styleResult._id })
         ));
