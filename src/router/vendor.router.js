@@ -11,7 +11,7 @@ import {
   SECRET_KEY,
   HASH_SALT_ROUND,
   SHIPPO_CLIENT_ID,
-  SHIPPO_STATE_KEY,
+  SHIPPO_OAUTH_REDIRECT_URI,
 } from "../config";
 
 const router = Router();
@@ -233,9 +233,8 @@ router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
 });
 
 router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
-  return res.send(
-    `https://goshippo.com/oauth/authorize?response_type=code&client_id=${SHIPPO_CLIENT_ID}&scope=*&state=${SHIPPO_STATE_KEY}`
-  );
+  const shippoOAuthUrl = `https://goshippo.com/oauth/authorize?response_type=code&client_id=${SHIPPO_CLIENT_ID}&redirect_uri=${SHIPPO_OAUTH_REDIRECT_URI}`;
+  return res.send(shippoOAuthUrl)
 });
 
 router.get(

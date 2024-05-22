@@ -486,6 +486,7 @@ router.post(
       }
       return res.json({ status: 200, product: product._id });
     } catch (err) {
+      console.log(err);
       return res.json({ status: 500 });
     }
   }
