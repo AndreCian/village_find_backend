@@ -18,6 +18,7 @@ router.get('/create-access-token', async (req, res) => {
         redirect_uri: SHIPPO_OAUTH_REDIRECT_URI,
     });
 
+    res.send({ token: response.data.data.access_token });
 });
 
 export { connectShippo };

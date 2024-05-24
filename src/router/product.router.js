@@ -176,9 +176,7 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
   }
   const products = await productModel.aggregate([
     {
-      $match: {
-        vendor: new ObjectId(vendor._id),
-      },
+      $match: { vendor: new ObjectId(vendor._id) },
     },
     { $match: nameAndIdFilter },
     {
@@ -200,29 +198,6 @@ router.get("/vendor", vendorMiddleware, async (req, res) => {
         createdAt: 1,
       },
     },
-    // {
-    //   $lookup: {
-    //     from: "inventories",
-    //     localField: "_id",
-    //     foreignField: "productId",
-    //     as: "inventories",
-    //   },
-    // },
-    // {
-    //   $addFields: {
-    //     inventory: {
-    //       $first: {
-    //         $filter: {
-    //           input: "$inventories",
-    //           as: "inventory",
-    //           cond: {
-    //             $ne: ["$$inventory.image", null],
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    // },
     {
       $replaceRoot: {
         newRoot: {
@@ -460,7 +435,8 @@ router.post(
         vendor.isProduct = true;
         await vendor.save();
       }
-      return res.json({ status: 200, product: product._id });
+      const styleInvents = styleResults.map(style => ({ styleID: style._id, inventories: style.inventories.map(invent => invent._id) }));
+      return res.json({ status: 200, product: product._id, styleInvents });
     } catch (err) {
       console.log(err);
       return res.json({ status: 500 });

@@ -342,7 +342,7 @@ router.post("/login", async (req, res) => {
     return res.json({
       status: 200,
       token,
-      profile: { fullName: vendor.business.name },
+      profile: { owner: vendor.business.name },
     });
   } catch (error) {
     console.log(error);
