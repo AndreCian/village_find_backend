@@ -217,7 +217,11 @@ router.get('/vendor/:id/style', vendorMiddleware, async (req, res) => {
   const { id } = req.params;
   try {
     const product = await productModel.findById(id).populate('stylesOrder');
-    return res.send(product.stylesOrder);
+    if (!product) {
+      res.send({ status: 404 });
+    } else {
+      return res.send(product.stylesOrder);
+    }
   } catch (err) {
     console.log(err);
   }
