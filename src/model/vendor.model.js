@@ -10,6 +10,7 @@ const vendorSchema = new Schema({
   isLeader: Boolean,
   communityStatus: String,
   stripeAccountID: String,
+  shippoAccountID: String,
   commission: Number,
   monthlyFee: Number,
   address: String,

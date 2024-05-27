@@ -40,14 +40,6 @@ router.get("/public", async (req, res) => {
     ...(type === "subscription"
       ? [{ $match: { subscription: { $exists: true, $ne: null } } }]
       : []),
-    // {
-    //   $lookup: {
-    //     from: "inventories",
-    //     localField: "_id",
-    //     foreignField: "productId",
-    //     as: "inventories",
-    //   },
-    // },
     {
       $lookup: {
         from: "vendors",
@@ -67,24 +59,6 @@ router.get("/public", async (req, res) => {
         }
         : { createdAt: 1 },
     },
-    // {
-    //   $addFields: {
-    //     inventory: {
-    //       $first: {
-    //         $filter: {
-    //           input: "$inventories",
-    //           as: "inventory",
-    //           cond: {
-    //             $ne: ["$$inventory.image", null],
-    //           },
-    //         },
-    //       },
-    //     },
-    //     vendor: {
-    //       $first: "$vendor",
-    //     },
-    //   },
-    // },
     {
       $addFields: {
         tags: {
@@ -239,7 +213,7 @@ router.get("/vendor/:id", vendorMiddleware, async (req, res) => {
   }
 });
 
-router.get('/vendor/:id/style', async (req, res) => {
+router.get('/vendor/:id/style', vendorMiddleware, async (req, res) => {
   const { id } = req.params;
   try {
     const product = await productModel.findById(id).populate('stylesOrder');
@@ -255,11 +229,7 @@ router.get(
     const { id } = req.params;
     try {
       const products = await productModel.aggregate([
-        {
-          $match: {
-            _id: new ObjectId(id),
-          },
-        },
+        { $match: { _id: new ObjectId(id) } },
         {
           $lookup: {
             from: "vendors",
@@ -322,6 +292,7 @@ router.get(
             styles: 1,
             inventories: {
               _id: 1,
+              styleId: 1,
               attrs: 1,
               image: 1,
               price: 1,

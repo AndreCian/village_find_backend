@@ -6,6 +6,7 @@ import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
 import uploadMiddleware from "../multer";
 import { connectStripe } from "../utils/stripe";
+import { createShippoAccount, retrieveShippoAccount } from "../utils/shippo";
 
 import {
   SECRET_KEY,
@@ -232,9 +233,37 @@ router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
   }
 });
 
+router.get('/shippo/check', vendorMiddleware, async (req, res) => {
+  const vendor = req.vendor;
+  const vendorShippoID = vendor.shippoAccountID;
+  if (!vendorShippoID) return res.send({ status: 400 });
+
+  const account = await retrieveShippoAccount(vendorShippoID);
+  return res.send({ status: 200, shippo });
+});
+
 router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
-  const shippoOAuthUrl = `https://goshippo.com/oauth/authorize?response_type=code&client_id=${SHIPPO_CLIENT_ID}&redirect_uri=${SHIPPO_OAUTH_REDIRECT_URI}`;
-  return res.send(shippoOAuthUrl)
+  const vendor = req.vendor;
+  const vendorShippoID = vendor.shippoAccountID;
+  if (!vendorShippoID) {
+    const account =
+      await createShippoAccount({
+        name: vendor.business.owner,
+        email: vendor.business.email,
+        address: vendor.business.address,
+        companyName: vendor.business.name
+      });
+    vendor.shippoAccountID = account.id;
+    await vendor.save();
+    return res.json({ status: 200, url: account.url });
+  } else {
+    const account = await retrieveShippoAccount(vendorShippoID);
+    if (account) {
+      return res.json({ status: 200, url: account.url });
+    } else {
+      return res.json({ status: 404 });
+    }
+  }
 });
 
 router.get(
