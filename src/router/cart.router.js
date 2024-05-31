@@ -10,30 +10,14 @@ router.get("/", /*customerMiddleware,*/ async (req, res) => {
   const { mode, buyerID } = req.query;
 
   try {
-    // const cartItems = await cartModel
-    //   .find({
-    //     customerId: customer._id,
-    //     status: "active",
-    //   })
-    //   .populate({
-    //     path: "vendorId",
-    //   })
-    //   .populate({
-    //     path: "inventoryId",
-    //     populate: [
-    //       {
-    //         path: "productId",
-    //       },
-    //       {
-    //         path: "styleId",
-    //       },
-    //     ],
-    //   });
     const params = { status: 'active' };
     if (mode === 'customer') params.customerId = buyerID;
     else params.guestId = buyerID;
     const cartItems = await cartModel.find(params)
-      .populate('vendorId').populate('productId');
+      .populate([
+        { path: 'vendorId' },
+        { path: 'productId' }
+      ]);
     return res.send(cartItems);
   } catch (err) {
     console.log(err);
