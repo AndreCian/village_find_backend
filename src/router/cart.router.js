@@ -185,7 +185,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", customerMiddleware, async (req, res) => {
+router.delete("/:id", /*customerMiddleware,*/ async (req, res) => {
   const { id } = req.params;
   try {
     await cartModel.findByIdAndDelete(id);
