@@ -239,7 +239,7 @@ router.get('/shippo/check', vendorMiddleware, async (req, res) => {
   if (!vendorShippoID) return res.send({ status: 400 });
 
   const account = await retrieveShippoAccount(vendorShippoID);
-  return res.send({ status: 200, shippo });
+  return res.send({ status: 200, shippo: account });
 });
 
 router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
@@ -253,13 +253,13 @@ router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
         address: vendor.business.address,
         companyName: vendor.business.name
       });
-    vendor.shippoAccountID = account.id;
+    vendor.shippoAccountID = account.object_id;
     await vendor.save();
-    return res.json({ status: 200, url: account.url });
+    return res.json({ status: 200 });
   } else {
     const account = await retrieveShippoAccount(vendorShippoID);
     if (account) {
-      return res.json({ status: 200, url: account.url });
+      return res.json({ status: 200 });
     } else {
       return res.json({ status: 404 });
     }

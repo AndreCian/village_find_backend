@@ -12,7 +12,4 @@ export const STRIPE_OAUTH_SUCCESS_FRONTEND_URI =
 export const STRIPE_CONNECT_WEBHOOK_SIGN =
   process.env.STRIPE_CONNECT_WEBHOOK_SIGN || "";
 export const SHIPPO_SECRET_KEY = process.env.SHIPPO_SECRET_KEY || '';
-export const SHIPPO_CLIENT_ID = process.env.SHIPPO_CLIENT_ID || "";
-export const SHIPPO_STATE_KEY = process.env.SHIPPO_STATE_KEY || "";
-export const SHIPPO_OAUTH_REDIRECT_URI = process.env.SHIPPO_OAUTH_REDIRECT_URI || '';
 export const FRONTEND_URL = process.env.FRONTEND_URL || "";

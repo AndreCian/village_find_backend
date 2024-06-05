@@ -9,12 +9,9 @@ import {
   STRIPE_OAUTH_SUCCESS_FRONTEND_URI,
 } from "../config";
 import cartModel from "../model/cart.model";
-// import paymentIntentModel from "../model/paymentintent.model";
 import customerMiddleware from "../middleware/customer.middleware";
 import stripeAccountModel from "../model/stripeaccount.model";
-// import stripeCustomerModel from "../model/stripecustomer.model";
 import vendorModel from "../model/vendor.model";
-// import customerModel from "../model/customer.model";
 
 const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
