@@ -65,8 +65,8 @@ router.post(
       } else {
         saveJson.guestId = buyerID;
       }
-      await cartModel.create(saveJson);
-      res.send({ status: 200 });
+      const cartItem = await cartModel.create(saveJson);
+      res.send({ status: 200, cartItem });
     } catch (err) {
       console.log(err);
     }

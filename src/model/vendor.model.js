@@ -11,6 +11,11 @@ const vendorSchema = new Schema({
   communityStatus: String,
   stripeAccountID: String,
   shippoAccountID: String,
+  shippoCarriers: {
+    usps: String,
+    ups: String,
+    fedex: String
+  },
   commission: Number,
   monthlyFee: Number,
   address: String,

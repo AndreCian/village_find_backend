@@ -27,6 +27,23 @@ const createShippoAccount = async ({ name = '', email = '', address = '', compan
     }
 }
 
+const createCarrierAccount = async (accountID, type) => {
+    try {
+        const account = await shippoClient.carrierAccounts.create({
+            accountId: accountID,
+            carrier: type,
+            parameters: {},
+            active: true
+        });
+        return account;
+    } catch (err) {
+        throw err;
+    }
+}
+
+const createShipment = (from, to, parcel) => {
+}
+
 const retrieveShippoAccount = async (accountID) => {
     try {
         const account = await shippoClient.shippoAccounts.get(accountID);
@@ -36,5 +53,5 @@ const retrieveShippoAccount = async (accountID) => {
     }
 }
 
-export { createShippoAccount, retrieveShippoAccount };
+export { createShippoAccount, retrieveShippoAccount, createCarrierAccount };
 export default router;

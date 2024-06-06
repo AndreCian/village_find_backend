@@ -6,13 +6,11 @@ import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
 import uploadMiddleware from "../multer";
 import { connectStripe } from "../utils/stripe";
-import { createShippoAccount, retrieveShippoAccount } from "../utils/shippo";
+import { createCarrierAccount, createShippoAccount, retrieveShippoAccount } from "../utils/shippo";
 
 import {
   SECRET_KEY,
   HASH_SALT_ROUND,
-  SHIPPO_CLIENT_ID,
-  SHIPPO_OAUTH_REDIRECT_URI,
 } from "../config";
 
 const router = Router();
@@ -246,18 +244,28 @@ router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
   const vendorShippoID = vendor.shippoAccountID;
   if (!vendorShippoID) {
-    const account =
+    const shippoAccount =
       await createShippoAccount({
         name: vendor.business.owner,
         email: vendor.business.email,
         address: vendor.business.address,
         companyName: vendor.business.name
       });
-    vendor.shippoAccountID = account.object_id;
+    const upsAccount = await createCarrierAccount(shippoAccount.object_id, 'ups');
+    const uspsAccount = await createCarrierAccount(shippoAccount.object_id, 'usps');
+    const fedexAccount = await createCarrierAccount(shippoAccount.object_id, 'fedex');
+
+    vendor.shippoAccountID = shippoAccount.object_id;
+    vendor.shippoCarriers = {
+      ups: upsAccount.objectId,
+      usps: uspsAccount.objectId,
+      fedex: fedexAccount.objectId
+    };
     await vendor.save();
     return res.json({ status: 200 });
   } else {
     const account = await retrieveShippoAccount(vendorShippoID);
+
     if (account) {
       return res.json({ status: 200 });
     } else {
