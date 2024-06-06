@@ -286,7 +286,6 @@ router.get(
             vendor: {
               _id: 1,
               shopName: '$vendor.business.name',
-              "images.logoUrl": 1
             },
             community: {
               _id: 1,

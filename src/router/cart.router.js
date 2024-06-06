@@ -65,7 +65,10 @@ router.post(
       } else {
         saveJson.guestId = buyerID;
       }
-      const cartItem = await cartModel.create(saveJson);
+      const cartItem = (await cartModel.create(saveJson)).populate([
+        { path: 'vendorId' },
+        { path: 'productId' }
+      ]);
       res.send({ status: 200, cartItem });
     } catch (err) {
       console.log(err);
