@@ -3,10 +3,9 @@ import express from "express";
 
 import {
   STRIPE_SECRET_KEY,
-  STRIPE_CLIENT_ID,
   STRIPE_CONNECT_WEBHOOK_SIGN,
-  STRIPE_OAUTH_REDIRECT_URI,
-  STRIPE_OAUTH_SUCCESS_FRONTEND_URI,
+  STRIPE_REFRESH_URI,
+  STRIPE_SUCCESS_FRONTEND_URI
 } from "../config";
 import cartModel from "../model/cart.model";
 import customerMiddleware from "../middleware/customer.middleware";
@@ -16,26 +15,45 @@ import vendorModel from "../model/vendor.model";
 const router = express.Router();
 const stripeClient = new stripe(STRIPE_SECRET_KEY);
 
-const generateStripeOAuthLink = (vendor) => {
-  // const stateValue = "OAUTH_STATE"; // You should generate and store a random string to prevent CSRF
-  const clientId = STRIPE_CLIENT_ID; // Your Stripe Connect client ID
-
-  const oauthUrl = stripeClient.oauth.authorizeUrl({
-    response_type: "code",
-    scope: "read_write", // 'read_write' scope allows for charge and customer management
-    client_id: clientId,
-    state: vendor._id.toString(),
-    redirect_uri: STRIPE_OAUTH_REDIRECT_URI, // Set this to your redirect URI
-  });
-
-  return oauthUrl;
+const createAccount = async (vendor) => {
+  try {
+    const account = await stripeClient.accounts.create({
+      type: 'express',
+      country: 'US',
+      email: vendor.business.email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+    });
+    return account;
+  } catch (error) {
+    throw error;
+  }
 };
 
-const connectStripe = async (vendor) => {
-  return {
-    url: generateStripeOAuthLink(vendor),
-  };
+const createAccountLink = async (account) => {
+  try {
+    const accountLink = await stripeClient.accountLinks.create({
+      account: account.id,
+      refresh_url: STRIPE_REFRESH_URI,
+      return_url: STRIPE_SUCCESS_FRONTEND_URI,
+      type: 'account_onboarding',
+    });
+    return accountLink;
+  } catch (error) {
+    throw error;
+  }
 };
+
+const retrieveAccount = async (accountID) => {
+  try {
+    const account = await stripeClient.accounts.retrieve(accountID);
+    return account;
+  } catch (err) {
+    throw err;
+  }
+}
 
 const createCustomer = async (token, detail, connectedAccountID) => {
   // const checkCustomer = await stripeCustomerModel.findOne({
@@ -334,40 +352,6 @@ async function createSubscription({
   }
 }
 
-router.get("/oauth", express.json(), async (req, res) => {
-  const { code, state } = req.query;
-
-  // Validate the state parameter here if you use it to protect against CSRF
-
-  const vendor = await vendorModel.findById(state);
-  if (!vendor) {
-    return res.status(500).send("Failed to stripe oauth.");
-  }
-
-  try {
-    // Exchange the authorization code for an access token
-    const response = await stripeClient.oauth.token({
-      grant_type: "authorization_code",
-      code: code,
-    });
-
-    const connectedAccountId = response.stripe_user_id;
-    const accessToken = response.access_token;
-
-    await stripeAccountModel.create({
-      vendorID: vendor._id,
-      stripeAccountID: connectedAccountId,
-    });
-
-    // Store connectedAccountId and accessToken in your database linked to the vendor's profile
-
-    res.redirect(STRIPE_OAUTH_SUCCESS_FRONTEND_URI);
-  } catch (error) {
-    console.error("Error during Stripe OAuth callback:", error);
-    res.status(500).send("Failed to connect Stripe account.");
-  }
-});
-
 router.post(
   "/create-payment-method",
   express.json(),
@@ -541,10 +525,12 @@ router.post(
 );
 
 export {
-  connectStripe,
+  createAccount,
+  createAccountLink,
   createCustomer,
   createPrice,
   createTransfer,
   createSubscription,
+  retrieveAccount
 };
 export default router;

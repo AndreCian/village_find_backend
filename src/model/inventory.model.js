@@ -12,6 +12,14 @@ const InventorySchema = new Schema({
     type: ObjectId,
     ref: "product",
   },
+  parcel: {
+    width: String,
+    height: String,
+    length: String,
+    weight: String,
+    distanceUnit: String,
+    massUnit: String
+  },
   attrs: [String],
   price: Number,
   quantity: Number,

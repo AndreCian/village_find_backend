@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import vendorModel from "../model/vendor.model";
 import vendorMiddleware from "../middleware/vendor.middleware";
 import uploadMiddleware from "../multer";
-import { connectStripe } from "../utils/stripe";
+import { createAccount, createAccountLink, retrieveAccount } from "../utils/stripe";
 import { createCarrierAccount, createShippoAccount, retrieveShippoAccount } from "../utils/shippo";
 
 import {
@@ -205,26 +205,36 @@ router.get(
 );
 
 router.get("/profile/shipping/:method", vendorMiddleware, async (req, res) => {
-  const { method } = req.params;
-  const vendor = req.vendor;
-  if (method === "service") {
-    return res.send((vendor.shipping && vendor.shipping.services) || []);
-  } else if (method === "parcel") {
-    const { id } = req.query;
-    if (id) {
-      return res.send(
-        await vendor.shipping.parcels.find((item) => item._id.toString() === id)
-      );
+  try {
+    const { method } = req.params;
+    const vendor = req.vendor;
+    if (method === "service") {
+      return res.send((vendor.shipping && vendor.shipping.services) || []);
+    } else if (method === 'address') {
+      const { shipping } = vendor;
+      const { address } = shipping;
+      res.send({ address });
     }
-    return res.send(vendor.shipping.parcels || []);
+  } catch (err) {
+    throw err;
   }
 });
 
 router.get("/stripe/on-board", vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
   try {
-    const account = await connectStripe(vendor);
-    return res.json({ status: 200, url: account.url });
+    if (vendor.stripeAccountID) {
+      const checkAccount = await retrieveAccount(vendor.stripeAccountID);
+      if (checkAccount) {
+        const accountLink = await createAccountLink(checkAccount);
+        return res.json({ status: 200, url: accountLink.url });
+      }
+    }
+    const account = await createAccount(vendor);
+    const accountLink = await createAccountLink(account);
+    vendor.stripeAccountID = account.id;
+    await vendor.save();
+    return res.json({ status: 200, url: accountLink.url });
   } catch (err) {
     console.log(err);
     return res.json({ status: 500, message: err });
@@ -251,15 +261,18 @@ router.get("/shippo/on-board", vendorMiddleware, async (req, res) => {
         address: vendor.business.address,
         companyName: vendor.business.name
       });
-    const upsAccount = await createCarrierAccount(shippoAccount.object_id, 'ups');
-    const uspsAccount = await createCarrierAccount(shippoAccount.object_id, 'usps');
-    const fedexAccount = await createCarrierAccount(shippoAccount.object_id, 'fedex');
+    const shippoAccountID = shippoAccount.object_id;
+    // const upsAccount = await createCarrierAccount({ accountID: shippoAccountID, carrier: 'ups', parameters: {} });
+    // console.log(upsAccount);
+    const uspsAccount = await createCarrierAccount({ accountID: shippoAccountID, carrier: 'usps', parameters: {} });
+    const fedexAccount = await createCarrierAccount({ accountID: shippoAccountID, carrier: 'fedex', parameters: {} });
+    // console.log(fedexAccount);
 
-    vendor.shippoAccountID = shippoAccount.object_id;
+    vendor.shippoAccountID = shippoAccountID;
     vendor.shippoCarriers = {
-      ups: upsAccount.objectId,
-      usps: uspsAccount.objectId,
-      fedex: fedexAccount.objectId
+      // ups: upsAccount.objectId,
+      usps: uspsAccount.object_id,
+      fedex: fedexAccount.object_id
     };
     await vendor.save();
     return res.json({ status: 200 });
@@ -285,6 +298,13 @@ router.get(
     return res.json({ status: 400 });
   }
 );
+
+router.get('/shipping/address', vendorMiddleware, async (req, res) => {
+  try {
+  } catch (err) {
+    throw err;
+  }
+});
 
 //signup
 router.post("/register", async (req, res) => {
@@ -463,18 +483,14 @@ router.put("/profile/shipping/:method", vendorMiddleware, async (req, res) => {
     vendor.shipping.services = services;
     await vendor.save();
     return res.json({ status: 200 });
-  } else if (method === "parcel") {
-    const parcel = req.body;
-    const id = parcel._id;
-    if (id) {
-      vendor.shipping.parcels = (vendor.shipping.parcels || []).map((item) =>
-        item._id.toString() === id ? parcel : item
-      );
-    } else {
-      vendor.shipping.parcels = [...(vendor.shipping.parcels || []), parcel];
-    }
+  } else if (method === 'address') {
+    const address = req.body;
+    vendor.shipping = {
+      ...(vendor.shipping || {}),
+      address
+    };
     await vendor.save();
-    return res.json({ status: 200 });
+    res.send({ status: 200 });
   }
 });
 

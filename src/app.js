@@ -16,6 +16,7 @@ import productRouter from "./router/product.router";
 import styleRouter from "./router/style.router";
 import inventoryRouter from "./router/inventory.router";
 import cartRouter from "./router/cart.router";
+import parcelRouter from './router/parcel.router';
 import orderRouter from "./router/order.router";
 import subscRouter from './router/subscription.router';
 import commissionRouter from './router/commission.router';
@@ -27,15 +28,22 @@ import communityRouter from "./router/community.router";
 import customerEventRouter from "./router/customerevent.router";
 import vendorRouter from "./router/vendor.router";
 import reviewRouter from "./router/review.router";
-import openaiRouter from "./router/openai";
-
+import openaiRouter from "./utils/openai";
 import stripeRouter from "./utils/stripe";
+
 import { MONGODB_URI } from "./config";
 
 const PORT = 8080;
 const app = express();
 
-mongoose.connect(MONGODB_URI);
+mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000
+}).then(() => {
+  console.log('Database connected.');
+}).catch(err => {
+  console.error('Database connection error:', err);
+})
 
 app.use("/api/stripe", cors(), stripeRouter);
 app.use(express.json({ limit: "200mb" }));
@@ -60,6 +68,7 @@ app.use("/api/products", productRouter);
 app.use("/api/styles", styleRouter);
 app.use("/api/inventories", inventoryRouter);
 app.use("/api/reviews", reviewRouter);
+app.use('/api/parcel', parcelRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/communities/meetup", customerEventRouter);

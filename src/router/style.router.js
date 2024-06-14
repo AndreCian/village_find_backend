@@ -120,6 +120,8 @@ router.put("/:id/inventory", vendorMiddleware, async (req, res) => {
   const { id } = req.params;
   const inventories = req.body || [];
 
+  console.log(inventories);
+
   try {
     const style = await styleModel.findById(id);
     const styleInvents = style.inventories || [];

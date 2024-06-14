@@ -12,6 +12,18 @@ const OrderSchema = new Schema({
     ref: 'customer'
   },
   deliveryType: String,
+  shippingInfo: {
+    trackingNumber: String,
+    trackingStatus: {
+      status: String,
+      statusDetails: String,
+      statusDate: Date
+    },
+    rate: {
+      service: String,
+      amount: Number
+    }
+  },
   deliveryInfo: {
     classification: String,
     address: String,
@@ -40,24 +52,35 @@ const OrderSchema = new Schema({
     address: String,
   },
   personalization: String,
+  subscription: {
+    subscriptionID: String,
+    iscsa: Boolean,
+    csa: {
+      startDate: String,
+      endDate: String,
+      duration: Number,
+      cycle: Number
+    },
+    frequency: {
+      interval: Number,
+      period: String,
+    },
+    status: String,
+  },
   product: {
     image: String,
     name: String,
-    shipping: {
-      service: String,
-      rate: Number,
-    },
-    delivery: {
-      fee: Number,
-    },
     subscription: {
       iscsa: Boolean,
-      cycle: {
-        total: Number,
-        current: Number,
-      },
-      status: String,
-      payment: String,
+      subscribe: String,
+      frequencies: [String],
+      discount: Number,
+      csa: {
+        duration: Number,
+        frequency: String,
+        startDate: Date,
+        endDate: Date,
+      }
     },
     price: Number,
     quantity: Number,

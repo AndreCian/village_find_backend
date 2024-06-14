@@ -300,6 +300,7 @@ router.get(
               attrs: 1,
               image: 1,
               price: 1,
+              parcel: 1,
             },
             customization: 1,
             subscription: 1,

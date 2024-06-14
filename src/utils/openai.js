@@ -1,5 +1,6 @@
 import Router from "express";
 import OpenAI from "openai";
+// import { SocksProxyAgent } from "socks-proxy-agent";
 
 import { OPENAI_KEY, ORGANIZATION_ID } from "../config";
 
@@ -7,6 +8,7 @@ const router = Router();
 const openai = new OpenAI({
   apiKey: OPENAI_KEY,
   organization: ORGANIZATION_ID,
+  // httpAgent: new SocksProxyAgent(process.env.PROXY_URL)
 });
 
 router.get("/", async (req, res) => {
@@ -17,7 +19,7 @@ router.get("/", async (req, res) => {
     ["first result", "second result", "third result", ... ]
     `;
     const chat = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: message },

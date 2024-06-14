@@ -18,7 +18,6 @@ const vendorSchema = new Schema({
   },
   commission: Number,
   monthlyFee: Number,
-  address: String,
   subscription: {
     type: Types.ObjectId,
     ref: 'subscription'
@@ -93,20 +92,13 @@ const vendorSchema = new Schema({
   },
   shipping: {
     services: [String],
-    shippoID: String,
-    parcels: [
-      {
-        name: String,
-        width: Number,
-        height: Number,
-        length: Number,
-        thickness: Number,
-        emptyWeight: Number,
-        maxWeight: Number,
-        sizeUnit: String,
-        massUnit: String,
-      },
-    ],
+    address: {
+      street1: String,
+      city: String,
+      state: String,
+      country: String,
+      zip: String
+    }
   },
   goals: {
     reason: String,

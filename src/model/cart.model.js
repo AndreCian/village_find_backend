@@ -37,6 +37,14 @@ export const cartSchema = new Schema({
       endDate: Date,
     }
   },
+  parcel: {
+    width: String,
+    height: String,
+    length: String,
+    weight: String,
+    distanceUnit: String,
+    massUnit: String
+  },
   pickuplocation: {
     name: String,
     address: String,
@@ -47,6 +55,11 @@ export const cartSchema = new Schema({
       from: String,
       to: String
     }
+  },
+  recipient: {
+    name: String,
+    phone: String,
+    email: String
   },
   delivery: {
     street: String,
@@ -66,6 +79,12 @@ export const cartSchema = new Schema({
     receiver: Object,
     isHomeDelivery: Boolean,
     delivery: Object,
+  },
+  shipping: {
+    rates: [{ amount: String, name: String, serviceLevelToken: String, carrierAccount: String }],
+    carrierAccount: String,
+    serviceLevelToken: String,
+    charge: Number,
   },
   status: String,
 });
