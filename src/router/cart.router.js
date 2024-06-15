@@ -185,6 +185,9 @@ router.post("/checkout", customerMiddleware, async (req, res) => {
         product: {
           ...pick(cartItem, ['price', 'quantity', 'discount', 'image', 'subscription']),
           name: cartItem.productId.name,
+          category: cartItem.productId.category,
+          tags: cartItem.productId.tags,
+          description: cartItem.productId.shortDesc,
           soldByUnit: cartItem.productId.soldByUnit
         },
         orderDate: new Date()

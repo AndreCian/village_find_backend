@@ -70,6 +70,8 @@ const OrderSchema = new Schema({
   product: {
     image: String,
     name: String,
+    category: String,
+    tags: [String],
     subscription: {
       iscsa: Boolean,
       subscribe: String,
@@ -86,6 +88,7 @@ const OrderSchema = new Schema({
     quantity: Number,
     discount: Number,
     subtotal: Number,
+    description: String,
     soldByUnit: String
   },
   status: String,

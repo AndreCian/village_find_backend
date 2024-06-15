@@ -4,6 +4,7 @@ import * as mongoose from "mongoose";
 import productModel from "../model/product.model";
 import styleModel from '../model/style.model';
 import inventoryModel from '../model/inventory.model';
+import orderModel from "../model/order.model";
 
 import vendorMiddleware from "../middleware/vendor.middleware";
 import uploadMiddleware from "../multer";
@@ -117,6 +118,33 @@ router.get("/public", async (req, res) => {
     },
   ]);
   return res.send(products);
+});
+
+router.get('/gift', async (req, res) => {
+  try {
+    const results = await orderModel.aggregate([
+      { $match: { 'gift.name': { $exists: true, $ne: "" } } },
+      { $sort: { 'orderDate': -1 } },
+      { $limit: 1 },
+      {
+        $project: {
+          image: '$product.image',
+          name: '$product.name',
+          price: '$product.price',
+          quantity: '$product.quantity',
+          subtotal: '$product.subtotal',
+          discount: '$product.discount',
+          category: '$product.category',
+          tags: '$product.tags',
+          description: '$product.description',
+          soldByUnit: '$product.soldByUnit'
+        }
+      }
+    ]);
+    res.send({ topGift: results });
+  } catch (err) {
+    throw err;
+  }
 });
 
 router.get("/vendor", vendorMiddleware, async (req, res) => {
