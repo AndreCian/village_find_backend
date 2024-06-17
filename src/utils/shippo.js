@@ -75,14 +75,16 @@ const createCarrierAccount = async ({ accountID, carrier, parameters }) => {
 
 const createParcel = async (parcel) => {
     try {
-        const result = await shippoClient.parcels.create({
+        const result = await shippoClient.post('/parcels', {
             length: `${parcel.length}`,
             width: `${parcel.width}`,
             height: `${parcel.height}`,
-            distanceUnit: `${parcel.sizeUnit}`,
+            distance_unit: `${parcel.sizeUnit}`,
             weight: `${parcel.maxWeight}`,
-            massUnit: `${parcel.massUnit}`
-        });
+            mass_unit: `${parcel.massUnit}`
+        }, {
+            'SHIPPO-ACCOUNT-ID': accountID
+        }).then(response => response.data);
 
         console.log('Parcel created:', result);
         return Promise.resolve(result);
