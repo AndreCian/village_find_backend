@@ -1,9 +1,8 @@
 import express from 'express';
 
-import { createParcel } from '../utils/shippo';
-
 import vendorMiddleware from '../middleware/vendor.middleware';
 import parcelModel from '../model/parcel.model';
+import { createParcel } from '../utils/shippo';
 
 const router = express.Router();
 
@@ -32,7 +31,8 @@ router.post('/', vendorMiddleware, async (req, res) => {
   const vendor = req.vendor;
   const parcel = req.body;
   try {
-    const shippoParcel = await createParcel(parcel);
+    if (!vendor.shippoAccountID) return res.send({ status: 400 });
+    const shippoParcel = await createParcel({ accountID: vendor.shippoAccountID, parcel });
     await parcelModel.create({ ...parcel, vendorID: vendor._id, parcelID: shippoParcel.objectId });
     return res.send({ status: 200 });
   } catch (err) {

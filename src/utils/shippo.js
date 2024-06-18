@@ -73,7 +73,7 @@ const createCarrierAccount = async ({ accountID, carrier, parameters }) => {
     }
 }
 
-const createParcel = async (parcel) => {
+const createParcel = async ({ accountID, parcel }) => {
     try {
         const result = await shippoClient.post('/parcels', {
             length: `${parcel.length}`,
