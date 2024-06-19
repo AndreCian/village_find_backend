@@ -279,6 +279,20 @@ router.get(
           },
         },
         {
+          $addFields: {
+            community: {
+              $arrayElemAt: ["$community", 0] // Extract the first element of the resulting array
+            }
+          }
+        },
+        {
+          $addFields: {
+            community: {
+              $ifNull: ["$community", [{ _id: null, name: "", slug: "", images: { logoUrl: "" } }]]
+            }
+          }
+        },
+        {
           $lookup: {
             from: "styles",
             localField: "stylesOrder",
@@ -362,6 +376,8 @@ router.get(
           },
         },
       ]);
+
+      console.log(products)
 
       if (products.length === 1) {
         return res.json({ status: 200, product: products[0] });
