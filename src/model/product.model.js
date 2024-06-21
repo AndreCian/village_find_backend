@@ -20,7 +20,14 @@ const productSchema = new Schema({
   quantity: Number,
   image: String,
   tax: String,
-  status: String,
+  parcel: {
+    width: String,
+    height: String,
+    length: String,
+    weight: String,
+    distanceUnit: String,
+    massUnit: String
+  },
   specifications: [
     {
       name: String,
@@ -45,5 +52,6 @@ const productSchema = new Schema({
   },
   stylesOrder: [{ type: ObjectId, ref: 'style' }],
   createdAt: Date,
+  status: String,
 });
 export default model("product", productSchema);

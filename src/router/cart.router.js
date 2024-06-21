@@ -132,7 +132,7 @@ router.post(
         subscription,
         parcel,
         status: 'active',
-        buymode: 'one-time'
+        buymode: 'one-time',
       };
       if (mode === 'customer') {
         saveJson.customerId = buyerID;

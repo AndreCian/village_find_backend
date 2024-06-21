@@ -279,20 +279,6 @@ router.get(
           },
         },
         {
-          $addFields: {
-            community: {
-              $arrayElemAt: ["$community", 0] // Extract the first element of the resulting array
-            }
-          }
-        },
-        {
-          $addFields: {
-            community: {
-              $ifNull: ["$community", [{ _id: null, name: "", slug: "", images: { logoUrl: "" } }]]
-            }
-          }
-        },
-        {
           $lookup: {
             from: "styles",
             localField: "stylesOrder",
@@ -344,6 +330,7 @@ router.get(
               price: 1,
               parcel: 1,
             },
+            parcel: 1,
             customization: 1,
             subscription: 1,
             soldByUnit: 1,
@@ -369,6 +356,7 @@ router.get(
                     subscription: "$subscription",
                     soldByUnit: "$soldByUnit",
                     deliveryTypes: "$deliveryTypes",
+                    parcel: "$parcel"
                   },
                 },
               ],
@@ -376,8 +364,6 @@ router.get(
           },
         },
       ]);
-
-      console.log(products)
 
       if (products.length === 1) {
         return res.json({ status: 200, product: products[0] });
@@ -510,14 +496,15 @@ router.put(
       disclaimer,
       soldByUnit,
       tax,
+      parcel
     } = req.body;
     const image = (req.files && req.files.image && req.files.image[0]) || null;
     const nutrition = (req.files && req.files.nutrition && req.files.nutrition[0]) || null;
+    console.log(parcel)
 
     try {
       const product = await productModel.findById(id);
       if (name) product.name = name;
-      if (deliveryTypes) product.deliveryTypes = JSON.parse(deliveryTypes);
       if (category) product.category = category;
       if (shortDesc) product.shortDesc = shortDesc;
       if (longDesc) product.longDesc = longDesc;
@@ -525,8 +512,10 @@ router.put(
       if (soldByUnit) product.soldByUnit = soldByUnit;
       if (tax) product.tax = tax;
       if (nutrition) product.nutrition = nutrition.path;
+      if (deliveryTypes) product.deliveryTypes = JSON.parse(deliveryTypes);
+      if (parcel) product.parcel = JSON.parse(parcel);
       if (image) product.image = image.path;
-      if (!!status) product.status = status;
+      if (status) product.status = status;
       await product.save();
       return res.json({ status: 200 });
     } catch (err) {
